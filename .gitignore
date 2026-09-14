@@ -2,3 +2,14 @@
 node_modules
 .vscode
 .next
+.next-stale-recovery
+.agents
+.env
+.env.*
+!.env.example
+
+# Keep deployable web images in Git; keep raw camera archives local.
+public/Trunk or Treat /FBLA pics.zip
+public/Trunk or Treat /FBLA pics (Unzipped Files)/
+public/Chapter Meeting Activities /Networking Guest Speaker 11-19/*.CR2
+public/Trunk or Treat /IMG_*.HEIC

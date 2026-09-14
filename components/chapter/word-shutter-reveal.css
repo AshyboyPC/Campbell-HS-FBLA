@@ -1,0 +1,11 @@
+.word-shutter{--word-shutter-color:#146fe8;margin:0}
+.word-shutter-navy{--word-shutter-color:#061a4e}
+.word-shutter-blue{--word-shutter-color:#146fe8}
+.word-shutter-sky{--word-shutter-color:#79c9ff}
+.word-shutter-gold{--word-shutter-color:#ffc72c}
+.word-shutter-ivory{--word-shutter-color:#f4efd9}
+.word-shutter-visual{display:inline}
+.word-shutter-word{position:relative;display:inline-block;overflow:hidden;vertical-align:bottom}
+.word-shutter-word>span{position:relative;z-index:0}
+.word-shutter-word>i{position:absolute;inset:.06em -.025em .02em;background:var(--word-shutter-color);transform:scaleY(1);transform-origin:bottom;z-index:1;pointer-events:none}
+@media(prefers-reduced-motion:reduce){.word-shutter-word>i{display:none}}

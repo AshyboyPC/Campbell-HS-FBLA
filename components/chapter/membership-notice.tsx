@@ -1,0 +1,8 @@
+"use client";
+import {useEffect,useState} from "react";
+import {chapterToday,formatDate} from "@/lib/event-dates";
+import {membership,openRoles} from "@/data/chapter";
+import {Action} from "./ui";
+export function LeadershipNotice(){const [today,setToday]=useState<string|null>(null);useEffect(()=>{const update=()=>setToday(chapterToday());update();const timer=setInterval(update,60000);return()=>clearInterval(timer)},[]);const open=today&&today<=membership.applicationDeadline;return <div><span className="status-tag">{!today?'2026–2027 opportunities':open?'Applications open':'Applications closed'}</span><h2 style={{marginTop:24}}>Step into<br/>the work.</h2><p className="lead" style={{marginTop:24}}>{open?`Applications are due ${formatDate(membership.applicationDeadline,{month:'long',day:'numeric',year:'numeric'})}. Ask an adviser for the application process.`:'The September 9 application window has ended. New opportunities and confirmed selections will be shared when available.'}</p><ul className="role-list">{openRoles.map(r=><li key={r}>{r}</li>)}</ul><Action href="/contact">{open?'Ask about applying':'Ask about future opportunities'}</Action></div>}
+export function DuesNotice(){const [today,setToday]=useState<string|null>(null);useEffect(()=>setToday(chapterToday()),[]);if(!today||today>membership.challengeEnd)return null;return <div className="info-line"><div><strong>Dues challenge</strong>August 3–October 1, 2026</div><div>{today<=membership.earlyActionDeadline?<><strong>Early action · 50 points</strong>Pay by September 28 and complete the BAND dues challenge check-in, subject to adviser verification.</>:<>The September 28 early-action deadline has passed. Check BAND for current challenge updates.</>}</div></div>}
+

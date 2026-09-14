@@ -1,32 +1,41 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
-const protectedRoutes = [
-  '/dashboard',
-  '/points/dashboard',
-  '/admin/dashboard',
-];
-
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  
-  // Check if the route is protected
-  const isProtected = protectedRoutes.some(route => pathname.startsWith(route));
-  
-  if (isProtected) {
-    const session = request.cookies.get('session');
-    
-    if (!session) {
-      // Redirect to login if not authenticated
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
+export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/admin/dashboard")) {
+    return NextResponse.redirect(new URL("/points/dashboard", request.url), 308);
   }
-  
-  return NextResponse.next();
+
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && publishableKey);
+  if (!configured) return NextResponse.next();
+
+  let response = NextResponse.next({ request });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    publishableKey!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (items) => {
+          items.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          items.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+        },
+      },
+    },
+  );
+
+  const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+  const publicPortalRoute = pathname === "/points" || pathname === "/points/login" || pathname.startsWith("/points/auth/");
+  if (!user && !publicPortalRoute) {
+    const login = new URL("/points/login", request.url);
+    login.searchParams.set("next", pathname);
+    return NextResponse.redirect(login);
+  }
+  if (user && pathname === "/points/login") return NextResponse.redirect(new URL("/points/onboarding", request.url));
+  return response;
 }
 
-export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|api/|login|auth/|images/|fonts/|static/|public/|favicon.ico).*)',
-  ]
-};
+export const config = { matcher: ["/points/:path*", "/dashboard/:path*", "/admin/dashboard/:path*"] };

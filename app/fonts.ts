@@ -1,4 +1,3 @@
-import { Inter, Montserrat } from 'next/font/google';
 import localFont from 'next/font/local';
 
 // Main display font (TalinademoRegular)

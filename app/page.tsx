@@ -1,141 +1,27 @@
-'use client';
+import Link from "next/link";
+import Image from "next/image";
+import HomeHero from "@/components/chapter/bio-hero";
+import Opportunities from "@/components/chapter/opportunities";
+import CurrentEvents from "@/components/chapter/current-events";
+import HomeMotion from "@/components/chapter/home-motion";
+import {Burst,Scribble,Spark} from "@/components/chapter/home-graphics";
+import WordShutterReveal from "@/components/chapter/word-shutter-reveal";
+import {SiteIcon} from "@/components/chapter/iconography";
+import {committees} from "@/data/chapter";
 
-import Hero from "@/app/components/Hero";
-import Slideshow from "@/app/components/Slideshow";
-import { motion } from "framer-motion";
-import { Trophy, Users, HandHeart } from "lucide-react";
-import { Canvas } from "@react-three/fiber";
-import GrainyGradient from "@/components/ui/gradient-shader-card";
-import { useRef, useState } from 'react';
+const ownership=[['01','OWN','One person takes responsibility.'],['02','SUPPORT','A team helps make it happen.'],['03','APPROVE','Advisers guide school, safety, financial, and official requirements.']];
+const committeeCopy=['Turn local needs into meaningful projects.','Plan campaigns that support chapter goals.','Create experiences that build chapter culture.','Build Campbell FBLA’s digital tools and technology projects.'];
 
-interface Ripple {
-  id: number;
-  x: number;
-  y: number;
-  startTime: number;
-}
+export default function Home(){return <HomeMotion>
+ <HomeHero/>
+ <Opportunities/>
+ <CurrentEvents/>
 
-export default function Home() {
-  const [ripples, setRipples] = useState<{[key: number]: Ripple[]}>({});
-  const rippleId = useRef(0);
-  
-  const handleCardClick = (index: number, e: React.MouseEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    
-    const newRipple = {
-      id: rippleId.current++,
-      x: x * rect.width,
-      y: y * rect.height,
-      startTime: Date.now() / 1000
-    };
-    
-    setRipples(prev => ({
-      ...prev,
-      [index]: [...(prev[index] || []), newRipple]
-    }));
-  };
-  return (
-    <div className="w-full">
-      <Hero />
+ <section className="v2-story" data-home-reveal><div className="wrap v2-story-grid"><div className="v2-story-copy"><span className="v2-tag">OUR NEXT CHAPTER</span><h2>YEAR THREE.<br/>FROM ADVISER-LED<br/>TO <em>STUDENT-LED.</em></h2><WordShutterReveal cover="sky" text="Campbell FBLA was rebuilt beginning in 2024–25. Now in our third year, we're building a chapter where students do more than attend meetings. Officers own real responsibilities, committees turn ideas into projects, members prepare year-round for competition, and the chapter documents what it creates so the next team can build on it."/><Link className="v2-button v2-button-blue" href="/about">Learn About Campbell FBLA <span>→</span></Link></div><div className="v2-ownership">{ownership.map(([number,title,copy])=><div key={title}><span>{number}</span><b>{title}</b><p>{copy}</p></div>)}</div></div></section>
 
-      <section id="about" className="mx-auto max-w-6xl px-4 py-12">
-        <div className="grid md:grid-cols-2 gap-8 items-center">
-          <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4 }}>
-            <h2 className="text-2xl text-[#00205B] font-medium">Who We Are</h2>
-            <p className="mt-2 text-sm text-[#00205B]/80">
-              A CTSO that teaches business and leadership skills to students. Campbell High School FBLA empowers students to become community-minded business leaders through academic competitions, leadership development, career exploration, and service. We welcome all students interested in business, entrepreneurship, technology, and finance.
-            </p>
-            <div className="mt-4 flex gap-3">
-              <motion.a whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} href="/membership" className="text-sm px-3 py-1.5 rounded-md bg-[#003DA5] text-white hover:bg-[#00308A]">Become a Member</motion.a>
-              <motion.a whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }} href="/about" className="text-sm px-3 py-1.5 rounded-md border border-[#003DA5]/30 text-[#00205B] hover:bg-[#003DA5]/10">Learn More</motion.a>
-            </div>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: 0.05 }}>
-            <Slideshow />
-          </motion.div>
-        </div>
+ <section className="v2-committees" data-home-reveal><div className="wrap"><div className="v2-section-head"><div><span className="v2-tag">COMMITTEES</span><h2>FIND YOUR <em>PLACE.</em></h2><p>Four teams. Different ways to make the chapter better.</p></div><Link className="v2-text-link" href="/get-involved#committees">Explore Committees →</Link></div><div className="v2-committee-grid">{committees.map((committee,index)=><Link key={committee.id} className={`v2-committee-card v2-committee-card-${index}`} href={`/get-involved#${committee.id}`}><span className="v2-committee-num">0{index+1}</span><b>{committee.name.toUpperCase()}</b><p>{committeeCopy[index]}</p><span className="committee-arrow" aria-hidden="true">↗</span></Link>)}</div></div></section>
 
-        {/* Gradient Cards */}
-        <div className="mt-24 grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            {
-              title: "Compete",
-              description: "Excel in events from Accounting to Marketing and Entrepreneurship.",
-              icon: <Trophy className="w-6 h-6 text-white" />,
-              colors: {
-                color1: "#1E5BD6",
-                color2: "#4A90E2",
-                color3: "#7FB3FF",
-                color4: "#FFD700"
-              }
-            },
-            {
-              title: "Lead",
-              description: "Develop leadership skills and serve in officer roles and committees.",
-              icon: <Users className="w-6 h-6 text-white" />,
-              colors: {
-                color1: "#1E5BD6",
-                color2: "#4A90E2",
-                color3: "#7FB3FF",
-                color4: "#FFD700"
-              }
-            },
-            {
-              title: "Serve",
-              description: "Make an impact through community service and fundraising.",
-              icon: <HandHeart className="w-6 h-6 text-white" />,
-              colors: {
-                color1: "#1E5BD6",
-                color2: "#4A90E2",
-                color3: "#7FB3FF",
-                color4: "#FFD700"
-              }
-            }
-          ].map((card, index) => (
-            <motion.div 
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
-              className="h-48 w-full rounded-xl overflow-hidden relative group"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={(e) => handleCardClick(index, e)}
-            >
-              <Canvas
-                camera={{ position: [0, 0, 1] }}
-                gl={{ preserveDrawingBuffer: true }}
-                className="absolute inset-0 cursor-pointer"
-              >
-                <GrainyGradient 
-                  ripples={ripples[index] || []}
-                  onTimeUpdate={(time) => {
-                    // Clean up old ripples
-                    setRipples(prev => ({
-                      ...prev,
-                      [index]: (prev[index] || []).filter(r => time - (r.startTime / 1000) < 2.0)
-                    }));
-                  }}
-                  colors={card.colors}
-                />
-              </Canvas>
-              <div className="absolute inset-0 p-6 flex flex-col justify-between">
-                <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  {card.icon}
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-1">{card.title}</h3>
-                  <p className="text-white/90 text-sm">{card.description}</p>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+ <section className="v2-feature-pair wrap" data-home-reveal><div className="v2-gallery-card"><div className="v2-card-heading"><div><span className="v2-tag">CHAPTER LIFE</span><h2>2025–26 <em>ARCHIVE</em></h2></div><Link className="v2-text-link" href="/gallery">Explore the Gallery →</Link></div><div className="v2-archive-art"><div className="v2-archive-large"><span>COMPETE</span><b>SHOW<br/>WHAT<br/>YOU KNOW.</b><Burst/></div><div className="v2-archive-small v2-archive-service"><span>SERVE</span><b>MAKE IT<br/>COUNT.</b><Spark/></div><div className="v2-archive-small v2-archive-build"><span>BUILD</span><b>MAKE IT<br/>USEFUL.</b><Scribble/></div></div></div><div className="v2-portal-card"><span className="v2-tag">COMING THIS YEAR</span><h2>YOUR FBLA.<br/><em>YOUR PROGRESS.</em></h2><div className="v2-portal-features"><span><SiteIcon name="verified" size={18} aria-hidden="true"/><b>Verified Points</b></span><span><SiteIcon name="calendar-alt" size={18} aria-hidden="true"/><b>Attendance History</b></span><span><SiteIcon name="target" size={18} aria-hidden="true"/><b>Cord Progress</b></span><span><SiteIcon name="award" size={18} aria-hidden="true"/><b>Leaderboard</b></span></div><p>We&apos;re building a new Campbell FBLA member portal that will make it easier to see your participation and progress without manually tracking everything yourself.</p><Link className="v2-portal-button" href="/points"><span>Member Portal</span><small>Coming Soon</small></Link><Image className="v2-momentum-art" data-home-float src="/campbell-momentum-3d.png" alt="Three-dimensional symbols of progress and achievement" width={720} height={480}/></div></section>
 
-    </div>
-  );
-}
+ <section className="v2-final" data-home-reveal><div className="wrap"><div className="v2-final-art"><Image src="/campbell-pathways-3d.png" alt="Trophy, megaphone, service heart, and coding laptop" width={680} height={226}/></div><div className="v2-final-copy"><span className="v2-tag">CAMPBELL FBLA / 2026–27</span><h2>READY TO DO MORE<br/>THAN JOIN A <em>CLUB?</em></h2><p>Compete. Build skills. Lead projects. Serve your community. Create something the next group of members can continue.</p></div><div className="v2-final-actions"><Link className="v2-button v2-button-blue" href="/get-involved">Get Involved <span>→</span></Link><Link className="v2-button v2-button-outline-dark" href="/contact">Contact Us <span>→</span></Link></div></div></section>
+</HomeMotion>}

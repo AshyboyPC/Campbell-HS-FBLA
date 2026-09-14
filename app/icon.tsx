@@ -17,14 +17,7 @@ export default function Icon() {
           display: 'flex',
         }}
       >
-        <img
-          src="https://storage.googleapis.com/cosmic-project-image-assets/images/c14a2256-a303-4bac-a5fb-bb9e62cd4f1a/favicon.png" // Replace with your public image URL
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-          }}
-        />
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#00205B', color: '#FFC72C', fontSize: 18, fontWeight: 700 }}>FBLA</div>
       </div>
     ),
     {
