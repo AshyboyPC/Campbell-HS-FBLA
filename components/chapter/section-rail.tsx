@@ -42,7 +42,7 @@ import {
  UserRoundCheck,
  UsersRound,
  type LucideIcon
-} from "lucide-react";
+} from "@/components/icons";
 import "./section-rail.css";
 
 const sectionIcons={

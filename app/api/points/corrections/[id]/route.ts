@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { requirePortalRole } from "@/lib/points/api-auth";
 
-const STAFF = ["secretary", "executive_leadership", "adviser", "admin"];
+const STAFF = ["adviser"];
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePortalRole(STAFF); if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -27,7 +27,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (error) return NextResponse.json({ error: error.message || "The attendance correction could not be applied." }, { status: 409 });
       return NextResponse.json({ ok: true, result: data });
     } else if (body.resolutionType === "point_adjustment") {
-      if (!["secretary", "executive_leadership", "adviser", "admin"].includes(auth.profile.account_role)) return NextResponse.json({ error: "Point adjustments require an authorized chapter reviewer." }, { status: 403 });
+      if (auth.profile.account_role !== "adviser") return NextResponse.json({ error: "Point adjustments require an adviser." }, { status: 403 });
       const points = Number(body.points); if (!Number.isFinite(points) || points === 0 || !body.pointCategoryId) return NextResponse.json({ error: "A non-zero point adjustment and category are required." }, { status: 400 });
       const { error } = await auth.admin.from("point_transactions").insert({ member_id: before.member_id, academic_year_id: auth.year.id, point_category_id: body.pointCategoryId, event_id: before.event_id, transaction_type: "adjustment", points, status: "approved", source_type: "correction_request", source_reference: `correction:${id}:${randomUUID()}`, description: body.description?.trim() || `Correction request ${id}`, notes: body.notes?.trim() || null, created_by: auth.profile.id, approved_by: auth.profile.id, approved_at: new Date().toISOString() });
       if (error) return NextResponse.json({ error: "The point adjustment could not be applied." }, { status: 409 });

@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return NextResponse.json({ error: "Member Portal is not configured." }, { status: 503 });
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.email || !user.email.toLowerCase().endsWith("@campbellhigh.net")) return NextResponse.json({ error: "A Campbell High School email is required." }, { status: 403 });
+  if (!user?.email) return NextResponse.json({ error: "Sign in with the Google account used for FBLA Connect." }, { status: 403 });
   const body = await request.json().catch(() => null);
   const quantity = Number(body?.quantity ?? 1);
   if (!body?.pointCategoryId || !body?.activityDate || typeof body.description !== "string" || body.description.trim().length < 10 || !Number.isFinite(quantity) || quantity <= 0) return NextResponse.json({ error: "Choose an activity, date, and include at least ten characters of detail." }, { status: 400 });

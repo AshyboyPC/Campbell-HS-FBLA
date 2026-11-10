@@ -2,6 +2,7 @@ import type {Metadata} from "next";
 import Image from "next/image";
 import Link from "next/link";
 import AboutYearConsole from "@/components/chapter/about-year-console";
+import AboutMotion from "@/components/chapter/about-motion";
 import {AboutHeroFold,ChapterTextRibbon} from "@/components/chapter/editorial-effects";
 import WordShutterReveal from "@/components/chapter/word-shutter-reveal";
 import "./about.css";
@@ -24,7 +25,7 @@ const nextLinks=[["I WANT TO JOIN","Membership options, committees, and ways to 
 function Label({children}:{children:React.ReactNode}){return <p className="about-label">{children}</p>}
 function ArrowLink({href,children,external=false}:{href:string;children:React.ReactNode;external?:boolean}){return <Link className="about-link" href={href} target={external?"_blank":undefined} rel={external?"noreferrer":undefined}>{children} <span aria-hidden="true">↗</span></Link>}
 
-export default function About(){return <div className="about-page">
+export default function About(){return <AboutMotion><div className="about-page">
  <header className="about-hero"><div className="about-hero-grid"><div className="about-hero-copy"><Label>ABOUT CAMPBELL FBLA</Label><AboutHeroFold/><p>FBLA is a national student organization focused on business, leadership, career preparation, competition, and community involvement. Campbell High School FBLA is our local chapter, giving Campbell students access to those opportunities throughout the school year.</p><nav className="about-jump" aria-label="About page sections"><a href="#how-fbla-works">How FBLA Works ↓</a><a href="#our-chapter">Our Chapter ↓</a><a href="#leadership">Leadership ↓</a></nav></div><div className="about-hero-mark"><span>GEORGIA → CAMPBELL</span><Image src="/campbell-georgia-fbla-lockup.png" alt="Georgia FBLA, Campbell High School" width={1288} height={1264} priority/><p>ONE ORGANIZATION.<br/><b>OUR CHAPTER.</b></p></div></div></header>
 
  <section id="how-fbla-works" className="about-section about-start"><div className="about-section-head"><Label>START HERE</Label><h2>WHAT IS <em>FBLA?</em></h2></div><div className="about-reading"><WordShutterReveal cover="blue" text="FBLA stands for Future Business Leaders of America. It is a Career and Technical Student Organization, or CTSO, that helps students develop business and leadership skills through competitive events, conferences, career experiences, community involvement, recognition programs, and chapter leadership."/><p>Students can explore areas such as finance, marketing, entrepreneurship, management, technology, public speaking, design, coding, and many other business and career fields. FBLA also gives students opportunities to meet other members, business professionals, and chapters beyond their own school.</p></div></section>
@@ -48,4 +49,4 @@ export default function About(){return <div className="about-page">
  <section className="about-section about-next"><div className="about-section-head"><Label>KEEP GOING</Label><h2>WHAT ARE YOU<br/><em>LOOKING FOR?</em></h2></div><div className="about-next-grid">{nextLinks.map(([title,copy,label,href])=><Link href={href} key={title}><span>{title}</span><p>{copy}</p><b>{label} ↗</b></Link>)}</div></section>
 
  <section className="about-final"><Label>CAMPBELL HIGH SCHOOL FBLA</Label><div><h2>INTERESTED IN<br/>BEING PART <em>OF IT?</em></h2><div><p>See current membership options, find a committee, or learn what is coming up this semester.</p><div className="about-final-actions"><ArrowLink href="/get-involved">Get Involved</ArrowLink><ArrowLink href="/events">View Events</ArrowLink></div></div></div></section>
- </div>}
+ </div></AboutMotion>}

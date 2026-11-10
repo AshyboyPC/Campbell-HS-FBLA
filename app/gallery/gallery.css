@@ -54,6 +54,11 @@
 .gallery-page .archive-filters button:hover{transform:translateY(-2px)}
 .gallery-page .archive-filters button[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff}
 .gallery-page .archive-toolbar>.eyebrow{flex:0 0 auto;margin:0}
+.gallery-page .archive-filter-stage{
+  min-width:0;
+  transform-origin:50% 10%;
+  will-change:transform,opacity,filter;
+}
 
 .gallery-page .archive-scatter{
   position:relative;
@@ -330,6 +335,7 @@
 }
 
 @media(prefers-reduced-motion:reduce){
+  .gallery-page .archive-filter-stage{will-change:auto}
   .gallery-page .archive-scatter-photo,
   .gallery-page .archive-rail-thumb,
   .gallery-page .archive-rail-slot{animation:none;transition:none;opacity:1}

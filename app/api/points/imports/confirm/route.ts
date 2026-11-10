@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import { requirePortalRole } from "@/lib/points/api-auth";
-const STAFF=["secretary","executive_leadership","adviser","admin"];
+const STAFF=["adviser"];
 const clean=(value:any)=>String(value??"").trim();
 
 export async function POST(request:Request){
  const auth=await requirePortalRole(STAFF);if("error" in auth)return NextResponse.json({error:auth.error},{status:auth.status});const body=await request.json().catch(()=>null);if(!body?.batchId)return NextResponse.json({error:"Missing preview batch."},{status:400});
- const {data:batch}=await auth.admin.from("import_batches").select("*").eq("id",body.batchId).eq("academic_year_id",auth.year.id).eq("status","preview").maybeSingle();if(!batch)return NextResponse.json({error:"This preview is missing, expired, or already confirmed."},{status:409});if(batch.import_type==="historical_points"&&auth.profile.account_role!=="admin")return NextResponse.json({error:"Historical point imports require administrator access."},{status:403});
+ const {data:batch}=await auth.admin.from("import_batches").select("*").eq("id",body.batchId).eq("academic_year_id",auth.year.id).eq("status","preview").maybeSingle();if(!batch)return NextResponse.json({error:"This preview is missing, expired, or already confirmed."},{status:409});if(batch.import_type==="historical_points"&&auth.profile.account_role!=="adviser")return NextResponse.json({error:"Historical point imports require adviser access."},{status:403});
  const rows=(batch.summary?.rows||[]).filter((r:any)=>r.status==="ready");let processed=0,review=Number(batch.row_count)-rows.length;
  await auth.admin.from("import_batches").update({status:"processing",confirmed_by:auth.profile.id,confirmed_at:new Date().toISOString()}).eq("id",batch.id);
  try{

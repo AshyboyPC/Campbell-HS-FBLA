@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect,useLayoutEffect,useMemo,useRef,useState} from "react";
-import {ArrowLeft,ArrowRight,ArrowUpRight,Download,RotateCcw,Search,X} from "lucide-react";
+import {ArrowLeft,ArrowRight,ArrowUpRight,Download,RotateCcw,Search,X} from "@/components/icons";
 import {gsap} from "gsap";
 import {resources,type ChapterResource} from "@/data/resources";
 import {SiteIcon,type SiteIconName} from "@/components/chapter/iconography";
@@ -14,18 +14,25 @@ const resourceIcons:Record<string,SiteIconName>={
  "membership-options":"map",
  compete:"pathway",
  "dress-code":"dress",
- "flc-conduct":"verified",
+ "rally-dress":"verified",
  interest:"idea",
  flyer:"megaphone",
  testing:"file-search",
- "spirit-shirt":"star"
+ "membership-display":"clipboard",
+ "spirit-shirt":"star",
+ "state-theme":"star",
+ "meeting-skills":"map",
+ "fbla-brand":"verified",
+ "brand-assets":"folder"
 };
 
 function iconFor(resource:ChapterResource){return resourceIcons[resource.id]??"file"}
 
 function actionLabel(type:string){
  if(type==="FORM")return "Open form";
- if(type==="PDF")return "View document";
+ if(type==="PDF")return "View PDF";
+ if(type==="IMAGE")return "View artwork";
+ if(type==="BAND FILE")return "Find in BAND";
  return "Open resource";
 }
 
@@ -126,7 +133,7 @@ export default function ResourceLibrary(){
  return <section id="library" className="resources-library">
   <div className="resources-library-head">
    <div><p className="resources-kicker"><span>01</span> THE LIBRARY</p><h2>FIND IT<br/><em>FAST.</em></h2></div>
-   <div className="resources-library-intro"><p>Choose a category or search by what you need. Every item shows its year and whether its public link is ready.</p><div className="resources-search"><Search size={19}/><label className="sr-only" htmlFor="resource-search">Search resources</label><input id="resource-search" value={query} onChange={event=>{setQuery(event.target.value);setSelectedId(null)}} placeholder="Search forms, guides, or topics…"/>{query&&<button type="button" onClick={()=>setQuery("")} aria-label="Clear search"><X size={18}/></button>}</div></div>
+   <div className="resources-library-intro"><p>Choose a category or search by what you need. Current contest PDFs and the state-theme artwork open directly in a new tab.</p><div className="resources-search"><Search size={19}/><label className="sr-only" htmlFor="resource-search">Search resources</label><input id="resource-search" value={query} onChange={event=>{setQuery(event.target.value);setSelectedId(null)}} placeholder="Search forms, guides, or topics…"/>{query&&<button type="button" onClick={()=>setQuery("")} aria-label="Clear search"><X size={18}/></button>}</div></div>
   </div>
 
   <div className="resources-category-bar" aria-label="Filter resources">
@@ -158,7 +165,7 @@ export default function ResourceLibrary(){
     <div className="resource-focus-actions" data-resource-reveal>
      <SiteIcon name={selectedIcon} aria-hidden="true"/>
      <div><small>SOURCE NOTE</small><p>{selected.source}</p></div>
-     {selected.href?<a href={selected.href} target={selected.href.startsWith("https:")?"_blank":undefined} rel={selected.href.startsWith("https:")?"noreferrer":undefined}>{actionLabel(selected.type)} <ArrowUpRight/></a>:<span className="resource-focus-status">{selected.status}</span>}
+     {selected.href?<a href={selected.href} target={selected.type==="PDF"||selected.type==="IMAGE"||selected.href.startsWith("https:")?"_blank":undefined} rel={selected.type==="PDF"||selected.type==="IMAGE"||selected.href.startsWith("https:")?"noopener noreferrer":undefined}>{actionLabel(selected.type)} <ArrowUpRight/></a>:<span className="resource-focus-status">{selected.status}</span>}
      {selected.download&&<a href={selected.download} download>Download <Download/></a>}
     </div>
    </article>})()}
@@ -180,6 +187,6 @@ export default function ResourceLibrary(){
 
   {filtered.length===0&&<div className="resources-empty"><span>0 RESULTS</span><h3>Nothing is hiding here.</h3><p>Try a different category or clear your search.</p><button type="button" onClick={()=>{setQuery("");chooseCategory("All")}}>Show every resource</button></div>}
 
-  <aside className="resources-note"><b>GOOD TO KNOW</b><p>This is a curated public library. For day-to-day announcements, last-minute changes, and member-only instructions, check BAND.</p><span>PUBLIC LINKS ONLY</span></aside>
+  <aside className="resources-note"><b>GOOD TO KNOW</b><p>PDFs and artwork open directly in a new tab. A few remaining BAND-only files still require chapter membership; their cards take you to the relevant BAND folder.</p><span>DIRECT FILES + BAND</span></aside>
  </section>;
 }

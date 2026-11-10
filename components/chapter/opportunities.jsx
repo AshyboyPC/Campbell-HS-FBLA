@@ -2,11 +2,11 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
+import {useAfterPageMotion} from "@/components/chapter/use-after-page-motion";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-gsap.registerPlugin(useGSAP, ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger);
 
 const pathways = [
   {
@@ -45,7 +45,7 @@ const cardLift = [20, 3, 3, 20];
 export default function Opportunities() {
   const root = useRef(null);
 
-  useGSAP(() => {
+  useAfterPageMotion(root,() => {
     const media = gsap.matchMedia();
 
     media.add("(min-width: 761px) and (prefers-reduced-motion: no-preference)", () => {
@@ -91,7 +91,7 @@ export default function Opportunities() {
     });
 
     return () => media.revert();
-  }, { scope: root });
+  });
 
   return (
     <section ref={root} className="v2-opportunities pathway-scroll-section">

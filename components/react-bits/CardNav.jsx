@@ -1,7 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
-// use your own icon import if react-icons is not available
-import { GoArrowUpRight } from 'react-icons/go';
+import { ArrowUpRight } from '@/components/icons';
 import './CardNav.css';
 
 const CardNav = ({
@@ -184,7 +183,7 @@ const CardNav = ({
               <div className="nav-card-links">
                 {item.links?.map((lnk, i) => (
                   <a key={`${lnk.label}-${i}`} className="nav-card-link" href={lnk.href} aria-label={lnk.ariaLabel} onClick={() => { if(isExpanded) toggleMenu(); }}>
-                    <GoArrowUpRight className="nav-card-link-icon" aria-hidden="true" />
+                    <ArrowUpRight className="nav-card-link-icon" aria-hidden="true" />
                     {lnk.label}
                   </a>
                 ))}

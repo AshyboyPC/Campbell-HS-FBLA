@@ -4,7 +4,7 @@ import Link from "next/link";
 import {useLayoutEffect,useMemo,useRef,useState} from "react";
 import gsap from "gsap";
 import {ScrollTrigger} from "gsap/ScrollTrigger";
-import {ArrowDown,ArrowRight,Check,ChevronDown,ExternalLink,Search,X} from "lucide-react";
+import {ArrowDown,ArrowRight,Check,ChevronDown,ExternalLink,Search,X} from "@/components/icons";
 import FoldText from "@/components/react-bits/FoldText";
 import WordShutterReveal from "@/components/chapter/word-shutter-reveal";
 import {SiteIcon} from "@/components/chapter/iconography";

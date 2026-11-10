@@ -1,4 +1,4 @@
-import { Icon } from '@iconify/react';
+import { Clock3 } from '@/components/icons';
 
 type ComingSoonProps = {
   title: string;
@@ -10,7 +10,7 @@ type ComingSoonProps = {
 export default function ComingSoon({ title, description, icon = 'mdi:clock-outline', cta }: ComingSoonProps) {
   return (
     <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-[#003DA5]/15 p-8 text-center shadow-sm">
-      <Icon icon={icon} className="h-12 w-12 mx-auto text-[#003DA5] mb-4" />
+      <Clock3 className="h-12 w-12 mx-auto text-[#003DA5] mb-4" aria-hidden="true" />
       <h2 className="text-2xl text-[#00205B] font-medium">{title}</h2>
       <p className="mt-3 text-sm leading-6 text-[#00205B]/75 max-w-xl mx-auto">{description}</p>
       {cta && (

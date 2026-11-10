@@ -29,6 +29,12 @@ const imageVariants = {
     : { x: 0, y: -12, scale: 0.98, opacity: 0 }
 };
 
+const filterVariants = {
+  enter: { opacity: 0, y: 28, scale: 0.985, filter: "blur(9px)" },
+  center: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" },
+  exit: { opacity: 0, y: -18, scale: 0.99, filter: "blur(8px)" }
+};
+
 function wrapIndex(value, total) {
   return ((value % total) + total) % total;
 }
@@ -123,6 +129,7 @@ export default function GalleryExperience() {
 
   const scatterHeight = Math.max(720, Math.ceil(collagePhotos.length / scatterMap.length) * 720 + 30);
   const activePhoto = activeIndex === null ? null : photos[activeIndex];
+  const filterKey = `${year}-${category}`;
 
   useEffect(() => {
     activeIndexRef.current = activeIndex;
@@ -250,32 +257,55 @@ export default function GalleryExperience() {
               </button>
             ))}
           </div>
-          <p className="eyebrow" aria-live="polite">{year} / {photos.length} PHOTOS</p>
+          <AnimatePresence initial={false} mode="wait">
+            <motion.p
+              className="eyebrow"
+              aria-live="polite"
+              key={`${filterKey}-${photos.length}`}
+              initial={motionReady ? { opacity: 0, y: 7 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -7 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+            >
+              {year} / {photos.length} PHOTOS
+            </motion.p>
+          </AnimatePresence>
         </div>
 
-        {photos.length ? (
-          <>
-            {activePhoto === null ? (
-              <div
-                className={`archive-scatter${organizingId ? " is-organizing" : ""}`}
-                aria-label="Scattered chapter photo gallery"
-                style={{ "--archive-scatter-height": `${scatterHeight}px` }}
-              >
-                {collagePhotos.map((photo, index) => (
-                  <button
-                    key={photo.id}
-                    className={`archive-scatter-photo frame-tone-${index % 5}${organizingId === photo.id ? " is-chosen" : ""}`}
-                    style={scatterStyle(index)}
-                    aria-label={`Open ${photo.alt}`}
-                    onClick={() => openPhoto(photo)}
+        <AnimatePresence initial={false} mode="wait">
+          <motion.div
+            className="archive-filter-stage"
+            key={filterKey}
+            variants={filterVariants}
+            initial={motionReady ? "enter" : false}
+            animate="center"
+            exit={motionReady ? "exit" : undefined}
+            transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+            layout={motionReady}
+          >
+            {photos.length ? (
+              <>
+                {activePhoto === null ? (
+                  <div
+                    className={`archive-scatter${organizingId ? " is-organizing" : ""}`}
+                    aria-label={`Scattered ${category === "All" ? year : category} photo gallery`}
+                    style={{ "--archive-scatter-height": `${scatterHeight}px` }}
                   >
-                    <img src={photo.src} alt={photo.alt} loading={index < 8 ? "eager" : "lazy"} />
-                    <span>{String(index + 1).padStart(2, "0")}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="archive-focus" id="archive-focus">
+                    {collagePhotos.map((photo, index) => (
+                      <button
+                        key={`${filterKey}-${photo.id}`}
+                        className={`archive-scatter-photo frame-tone-${index % 5}${organizingId === photo.id ? " is-chosen" : ""}`}
+                        style={scatterStyle(index)}
+                        aria-label={`Open ${photo.alt}`}
+                        onClick={() => openPhoto(photo)}
+                      >
+                        <img src={photo.src} alt={photo.alt} loading={index < 8 ? "eager" : "lazy"} />
+                        <span>{String(index + 1).padStart(2, "0")}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="archive-focus" id="archive-focus">
                 <aside className="archive-rail" aria-label="Choose a chapter photo">
                   {railEntries.map(({ offset, index, photo }) => offset === 0 ? (
                     <div
@@ -347,23 +377,27 @@ export default function GalleryExperience() {
                     </button>
                   </div>
                 </div>
+                  </div>
+                )}
+
+                <p className="archive-year-note">
+                  {year === "2024–25"
+                    ? "The Embrace the Challenge season, RLC medal moments, February social, and SLC 2025 are preserved in the 2024–25 archive."
+                    : category === "All"
+                      ? "Select any frame to gather the collection into the focused viewer."
+                      : `The focused viewer will stay inside the ${category} collection.`}
+                </p>
+              </>
+            ) : (
+              <div className="archive-empty-state">
+                <p className="eyebrow">2026–2027 / COMING SOON</p>
+                <h2>A new year.<br />A new story.</h2>
+                <p>Current-year chapter photos will appear here once their dates and public-use permissions are verified. Explore the archive in the meantime.</p>
+                <button className="action" onClick={() => resetView("2025–26", "All")}>Explore 2025–26 ↗</button>
               </div>
             )}
-
-            <p className="archive-year-note">
-              {year === "2024–25"
-                ? "The Embrace the Challenge season, RLC medal moments, February social, and SLC 2025 are preserved in the 2024–25 archive."
-                : "Select any frame to gather the collection into the focused viewer."}
-            </p>
-          </>
-        ) : (
-          <div className="archive-empty-state">
-            <p className="eyebrow">2026–2027 / COMING SOON</p>
-            <h2>A new year.<br />A new story.</h2>
-            <p>Current-year chapter photos will appear here once their dates and public-use permissions are verified. Explore the archive in the meantime.</p>
-            <button className="action" onClick={() => resetView("2025–26", "All")}>Explore 2025–26 ↗</button>
-          </div>
-        )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

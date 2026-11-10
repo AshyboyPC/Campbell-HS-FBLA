@@ -4,6 +4,7 @@ import Image from "next/image";
 import {useEffect,useRef} from "react";
 import {usePathname,useRouter} from "next/navigation";
 import gsap from "gsap";
+import {markPageMotionReady,resetPageMotionReady} from "@/lib/page-motion-ready";
 
 const TICK_COUNT=48;
 
@@ -18,7 +19,8 @@ export default function PageMotion(){
  const busy=useRef(false);
 
  useEffect(()=>{
-  if(pathname.startsWith("/points"))return;
+  resetPageMotionReady(pathname);
+  if(pathname.startsWith("/points")){markPageMotionReady(pathname);return;}
   if(!curtain.current||!ring.current||!disc.current||!number.current)return;
   timeline.current?.kill();
   const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -29,16 +31,14 @@ export default function PageMotion(){
   gsap.set(ticks,{scaleY:reduced?1:.14,opacity:reduced?1:.12,transformOrigin:"50% 100%"});
   number.current.textContent=reduced?"100":"0";
   if(reduced){
-   timeline.current=gsap.timeline({onComplete:()=>{busy.current=false}}).to(curtain.current,{yPercent:-105,duration:.01,delay:.12,pointerEvents:"none"});
+   timeline.current=gsap.timeline({onComplete:()=>{busy.current=false;markPageMotionReady(pathname);}}).to(curtain.current,{yPercent:-105,duration:.01,delay:.12,pointerEvents:"none"});
    return()=>{timeline.current?.kill();};
   }
-  timeline.current=gsap.timeline({onComplete:()=>{busy.current=false}})
+  timeline.current=gsap.timeline()
    .to(disc.current,{scale:1,duration:.52,ease:"back.out(1.75)"},0)
    .to(counter,{value:100,duration:1.3,ease:"power1.inOut",onUpdate:()=>{if(number.current)number.current.textContent=String(Math.round(counter.value))}},0)
    .to(ticks,{scaleY:1,opacity:1,duration:.16,stagger:.024,ease:"back.out(3)"},.05)
-   .to(curtain.current,{yPercent:-105,borderRadius:"0 0 52px 52px",duration:.72,ease:"power4.inOut",pointerEvents:"none"},1.42);
-  const main=document.getElementById("main");
-  if(main)gsap.fromTo(main,{y:24,opacity:.55},{y:0,opacity:1,duration:.85,delay:1.7,ease:"power3.out",clearProps:"transform,opacity"});
+   .to(curtain.current,{yPercent:-105,borderRadius:"0 0 52px 52px",duration:.72,ease:"power4.inOut",pointerEvents:"none",onComplete:()=>{busy.current=false;markPageMotionReady(pathname);}},1.42);
   return()=>{timeline.current?.kill();};
  },[pathname]);
 
@@ -53,6 +53,7 @@ export default function PageMotion(){
    event.preventDefault();
    if(busy.current||!curtain.current||!ring.current||!number.current)return;
    busy.current=true;
+   resetPageMotionReady(pathname);
    timeline.current?.kill();
    const ticks=ring.current.querySelectorAll(".loader-tick span");
    gsap.set(ticks,{scaleY:.14,opacity:.12});

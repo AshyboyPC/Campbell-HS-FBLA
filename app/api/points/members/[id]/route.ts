@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { requirePortalRole } from "@/lib/points/api-auth";
 
-const ADMIN_ROLES = ["admin", "adviser"];
+const ADMIN_ROLES = ["adviser"];
 const MEMBERSHIP_STATUSES = ["pending", "active", "inactive", "graduated"];
 const DUES_STATUSES = ["not_paid", "pending", "paid", "waived"];
 const ACCOUNT_ROLES = ["member", "officer"];
@@ -17,9 +17,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const { data: before } = await auth.admin.from("profiles").select("*").eq("id", id).maybeSingle();
   if (!before) return NextResponse.json({ error: "Member was not found." }, { status: 404 });
-  if (auth.profile.account_role !== "adviser" && ["admin", "adviser"].includes(before.account_role)) {
-    return NextResponse.json({ error: "Only the adviser account can change administrator access." }, { status: 403 });
-  }
 
   const update: Record<string, unknown> = {};
   if (typeof body.approved === "boolean") update.approved = body.approved;

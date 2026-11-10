@@ -7,7 +7,6 @@ export default async function OnboardingPage() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
   if (!user?.email) redirect("/points/login");
-  if (!/^(?:[a-z0-9]+\.[a-z0-9]+|fbla)@campbellhigh\.net$/i.test(user.email)) redirect("/points/login?error=school-email-required");
   const { data: profile } = await supabase!.from("profiles").select("onboarding_completed,approved,active,account_role").eq("auth_user_id", user.id).maybeSingle();
   if (profile?.onboarding_completed) redirect(profile.account_role === "adviser" ? "/points/admin/dashboard" : "/points/dashboard");
   const meta = user.user_metadata || {}; const emailName = user.email.split("@")[0].split(".");

@@ -3,7 +3,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { UserRound } from "lucide-react";
+import { UserRound } from "@/components/icons";
 import { navItems, chapter } from "@/data/chapter";
 export default function Navigation(){
  const pathname=usePathname(); const [open,setOpen]=useState(false); const [progress,setProgress]=useState(0); const panel=useRef(null); const toggle=useRef(null); const header=useRef(null); const homeRail=useRef(null); const innerRail=useRef(null);

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "@/components/icons";
 import { chapter } from "@/data/chapter";
 export function Action({href,children,secondary=false}:{href:string;children:React.ReactNode;secondary?:boolean}){return <Link className={`action ${secondary?'action-outline':''}`} href={href}>{children}<ArrowUpRight size={18} aria-hidden="true"/></Link>}
 export function PageIntro({eyebrow,title,description,children}:{eyebrow:string;title:string;description:string;children?:React.ReactNode}){return <header className="page-intro wrap"><p className="eyebrow">{eyebrow} <span>/ {chapter.yearLabel}</span></p><h1>{title}</h1><div className="intro-bottom"><p className="lead">{description}</p>{children}</div></header>}

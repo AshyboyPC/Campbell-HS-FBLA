@@ -3,7 +3,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Send } from "lucide-react";
+import { LogOut, Send } from "@/components/icons";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function PortalSignOut() {

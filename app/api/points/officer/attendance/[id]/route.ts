@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requirePortalRole } from "@/lib/points/api-auth";
 
-const STAFF = ["secretary", "executive_leadership", "adviser", "admin"];
+const STAFF = ["adviser"];
 const STATUSES = ["present", "late", "excused_absence", "unexcused_absence", "not_required"];
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {

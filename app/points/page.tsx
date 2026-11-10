@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, BarChart3, CalendarCheck2, Medal, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, BarChart3, CalendarCheck2, Medal, ShieldCheck } from "@/components/icons";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -21,7 +21,7 @@ export default async function PointsEntry() {
         <p>Your official points, attendance, cord progress, and chapter participation—organized in one private, verified place.</p>
         <div className="points-entry-actions">
           <Link className="portal-primary" href={user ? "/points/onboarding" : "/points/login"}>{user ? "Open my portal" : "Continue to sign in"}<ArrowRight size={19}/></Link>
-          <span>{hasSupabaseConfig ? "Uses your Campbell Google account" : "Portal connection pending"}</span>
+          <span>{hasSupabaseConfig ? "Uses your FBLA Connect Google account" : "Portal connection pending"}</span>
         </div>
       </div>
       <div className="points-entry-board" aria-label="Member portal capabilities">

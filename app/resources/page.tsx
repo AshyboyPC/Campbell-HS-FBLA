@@ -1,6 +1,6 @@
 import type {Metadata} from "next";
 import Link from "next/link";
-import {ArrowDown, ArrowUpRight} from "lucide-react";
+import {ArrowDown, ArrowUpRight} from "@/components/icons";
 import {SiteIcon} from "@/components/chapter/iconography";
 import ResourceLibrary from "@/components/chapter/resource-library";
 import "./resources.css";

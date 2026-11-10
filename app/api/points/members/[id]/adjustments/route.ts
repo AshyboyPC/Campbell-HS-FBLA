@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { requirePortalRole } from "@/lib/points/api-auth";
 
-const REVIEWERS = ["secretary", "executive_leadership", "adviser", "admin"];
+const REVIEWERS = ["adviser"];
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePortalRole(REVIEWERS); if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });

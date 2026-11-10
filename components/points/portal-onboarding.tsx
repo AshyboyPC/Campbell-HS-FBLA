@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, LoaderCircle } from "lucide-react";
+import { ArrowRight, LoaderCircle } from "@/components/icons";
 
 type Props = { email: string; defaults: { firstName?: string; lastName?: string; displayName?: string } };
 
@@ -21,7 +21,7 @@ export function PortalOnboarding({ email, defaults }: Props) {
   }
 
   return <section className="portal-onboarding-shell">
-    <div className="portal-onboarding-copy"><span>FIRST-TIME SETUP</span><h1>Tell us who you are.</h1><p>This links your verified Campbell Google account to the private BAND roster. Known members continue immediately. A new or unclear match goes to the chapter review queue.</p><b>{email}</b></div>
+    <div className="portal-onboarding-copy"><span>FIRST-TIME SETUP</span><h1>Connect your record.</h1><p>This links your verified personal Google account to the email used for FBLA Connect. Exact matches continue immediately. New or unmatched accounts wait for adviser review.</p><b>{email}</b></div>
     <form className="portal-onboarding-form" onSubmit={submit}>
       <div><label>First name<input name="firstName" required defaultValue={defaults.firstName}/></label><label>Last name<input name="lastName" required defaultValue={defaults.lastName}/></label></div>
       <label>Preferred name<input name="displayName" required defaultValue={defaults.displayName}/></label>

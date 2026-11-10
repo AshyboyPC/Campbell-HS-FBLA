@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { requirePortalRole } from "@/lib/points/api-auth";
 
-const STAFF = ["secretary", "executive_leadership", "adviser", "admin"];
+const STAFF = ["adviser"];
 const EVENT_TYPES = ["chapter_meeting", "officer_team_meeting", "social", "service", "fundraiser", "workshop", "competition_study", "rally", "conference", "competition", "BAA", "leadership", "other"];
 const SOURCES = ["google_form", "microsoft_form", "csv", "manual", "qr", "admin", "other"];
 

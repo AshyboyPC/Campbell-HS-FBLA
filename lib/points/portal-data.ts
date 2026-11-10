@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { adminUnlockConfigured, isAdminUnlocked } from "@/lib/points/admin-unlock";
+import { googleSyncConfigured } from "@/lib/points/google-workspace";
 
-const STAFF = ["adviser", "admin"];
-const EXEC = ["adviser", "admin"];
-const ADMIN = ["admin", "adviser"];
+const STAFF = ["adviser"];
+const ADMIN = ["adviser"];
 
 const participatingLeaderboard = (rows: any[] | null | undefined) => {
   const participants = (rows ?? []).filter(row => row.graduation_year != null);
@@ -46,18 +47,18 @@ export async function loadPortalContext(slug: string): Promise<PortalContext> {
   ]);
   empty.profile = profile;
   empty.year = year;
-  if (!profile?.approved || !profile?.active || !year || (profile.membership_status !== "active" && !["admin","adviser"].includes(profile.account_role))) return empty;
+  if (!profile?.approved || !profile?.active || !year || (profile.membership_status !== "active" && profile.account_role !== "adviser")) return empty;
 
   const isStaff = STAFF.includes(profile.account_role);
-  const isExec = EXEC.includes(profile.account_role);
   const isAdmin = ADMIN.includes(profile.account_role);
+  const isOfficer = profile.account_role === "officer" || Boolean(profile.officer_position);
   const managementRoute = slug.startsWith("manage/");
-  const claimReviewRoute = slug === "manage/point-review";
+  const claimReviewRoute = slug === "manage/point-review" || slug === "manage/review";
   const adminRoute = slug.startsWith("admin/") || slug === "admin";
-  const officerRoute = slug.startsWith("officer/");
-  empty.authorized = adminRoute ? isAdmin : claimReviewRoute ? isExec : managementRoute ? isStaff : officerRoute ? Boolean(profile.officer_position || isStaff) : profile.account_role !== "adviser";
+  const officerRoute = slug === "officer" || slug.startsWith("officer/");
+  empty.authorized = adminRoute ? isAdmin : claimReviewRoute ? (isOfficer || isAdmin) : managementRoute ? isStaff : officerRoute ? Boolean(isOfficer || isStaff) : profile.account_role !== "adviser";
   if (!empty.authorized) return empty;
-  if ((managementRoute || adminRoute) && ["admin","adviser"].includes(profile.account_role)) {
+  if ((managementRoute || adminRoute) && profile.account_role === "adviser") {
     empty.requiresAdminUnlock = !(await isAdminUnlocked(user.id));
     if (empty.requiresAdminUnlock) return empty;
   }
@@ -81,6 +82,36 @@ export async function loadPortalContext(slug: string): Promise<PortalContext> {
     data.requirement = requirement;
     data.corrections = corrections ?? [];
     data.nextEvent = nextEvent;
+  } else if (slug === "activity") {
+    const [{ data: transactions }, { data: attendance }, { data: leaderboard }, { data: rules }, { data: requirement }] = await Promise.all([
+      supabase.from("point_transactions").select("id,points,transaction_type,status,source_type,description,created_at,point_categories(name,group_name),events(title)").eq("member_id", profile.id).eq("academic_year_id", year.id).order("created_at", { ascending: false }),
+      supabase.from("member_attendance").select("id,status,verified,service_hours,source_type,check_in_timestamp,events(title,start_datetime,event_type,required_for_members)").eq("member_id", profile.id).order("check_in_timestamp", { ascending: false }),
+      supabase.rpc("get_safe_leaderboard", { p_academic_year_id: year.id }),
+      supabase.from("point_categories").select("id,code,name,description,group_name,calculation_type,default_points,points_per_unit,max_points").eq("academic_year_id", year.id).eq("published", true).eq("active", true).order("sort_order"),
+      supabase.from("graduation_requirements").select("required_points,notes").eq("academic_year_id", year.id).eq("graduation_year", profile.graduation_year).eq("published", true).maybeSingle(),
+    ]);
+    data.transactions = transactions ?? [];
+    data.attendance = attendance ?? [];
+    data.leaderboard = participatingLeaderboard(leaderboard);
+    data.rules = rules ?? [];
+    data.requirement = requirement;
+  } else if (slug === "requests") {
+    const [{ data: claims }, { data: categories }, { data: events }, { data: corrections }] = await Promise.all([
+      supabase.from("point_claims").select("id,activity_date,quantity,member_description,evidence_url,status,calculated_points,reviewer_notes,created_at,point_categories(name,calculation_type,default_points,points_per_unit,max_points),events(title)").eq("member_id",profile.id).eq("academic_year_id",year.id).order("created_at",{ascending:false}),
+      supabase.from("point_categories").select("id,name,calculation_type,default_points,points_per_unit,max_points").eq("academic_year_id",year.id).eq("self_reportable",true).eq("active",true).eq("published",true).order("sort_order"),
+      supabase.from("events").select("id,title,start_datetime").eq("academic_year_id",year.id).eq("active",true).order("start_datetime",{ascending:false}).limit(100),
+      supabase.from("correction_requests").select("id,issue_type,description,status,activity_date,created_at,resolved_at,events(title)").eq("member_id", profile.id).order("created_at", { ascending: false }),
+    ]);
+    data.claims=claims??[]; data.categories=categories??[]; data.events=events??[]; data.corrections=corrections??[];
+  } else if (slug === "officer") {
+    const [{ data: attendance }, { data: actions }, { data: requests }, { data: policyTx }, { data: events }] = await Promise.all([
+      supabase.from("officer_attendance").select("id,status,late_minutes,early_departure_minutes,attendance_evidence_status,first_join_at,last_leave_at,events(title,start_datetime)").eq("officer_id", profile.id).eq("academic_year_id", year.id).order("created_at", { ascending: false }),
+      supabase.from("officer_accountability_actions").select("id,threshold,action_type,action_label,status,issued_at,review_date").eq("officer_id", profile.id).eq("academic_year_id", year.id).order("threshold", { ascending: false }),
+      supabase.from("officer_absence_requests").select("id,status,notice_given_at,handoff_required,events(title,start_datetime)").eq("officer_id", profile.id).order("created_at", { ascending: false }),
+      supabase.from("point_transactions").select("points,created_at,point_categories!inner(code)").eq("member_id", profile.id).eq("academic_year_id", year.id).eq("point_categories.code", "OFFICER_ATTENDANCE_POLICY").eq("status", "approved"),
+      supabase.from("events").select("id,title,start_datetime").eq("academic_year_id",year.id).eq("required_for_officers",true).gte("start_datetime",new Date().toISOString()).order("start_datetime").limit(30),
+    ]);
+    data.attendance=attendance??[]; data.actions=actions??[]; data.requests=requests??[]; data.events=events??[]; data.policyTotal=(policyTx??[]).reduce((sum:number,row:any)=>sum+Number(row.points),0);
   } else if (slug === "leaderboard") {
     const { data: rows } = await supabase.rpc("get_safe_leaderboard", { p_academic_year_id: year.id }); data.rows = participatingLeaderboard(rows);
   } else if (slug === "attendance") {
@@ -125,23 +156,45 @@ export async function loadPortalContext(slug: string): Promise<PortalContext> {
   } else if (slug === "manage/members") {
     const { data: rows } = await supabase.from("profiles").select("id,member_id,display_name,graduation_year,membership_status,membership_tier,dues_status,account_role,officer_position,approved,active").neq("account_role","adviser").order("display_name"); data.rows=rows??[];
   } else if (slug === "manage/events" || slug.startsWith("manage/events/")) {
-    const [{ data: rows }, { data: categories }] = await Promise.all([
+    const [{ data: rows }, { data: categories }, { data: connections }, { data: recentRuns }] = await Promise.all([
       supabase.from("events").select("id,event_code,title,event_type,start_datetime,end_datetime,location,required_for_members,required_for_officers,attendance_source,active").eq("academic_year_id",year.id).order("start_datetime",{ascending:false}),
       supabase.from("point_categories").select("id,name").eq("academic_year_id",year.id).eq("active",true).order("sort_order"),
-    ]);data.rows=rows??[];data.categories=categories??[];
+      supabase.from("sync_connections").select("id,purpose,provider,display_name,status,external_resource_id,worksheet_name,last_synced_at,last_error,active").order("purpose"),
+      supabase.from("sync_runs").select("id,connection_id,direction,status,processed_count,error_count,started_at,finished_at,error_summary").order("started_at",{ascending:false}).limit(8),
+    ]);data.rows=rows??[];data.categories=categories??[];data.connections=connections??[];data.recentRuns=recentRuns??[];data.credentialsConfigured=googleSyncConfigured();
+  } else if (slug === "manage/review") {
+    const reviewDb = createSupabaseAdminClient() ?? supabase;
+    const claimQuery = reviewDb.from("point_claims").select("id,activity_date,quantity,member_description,evidence_url,status,created_at,profiles!point_claims_member_id_fkey(member_id,display_name),point_categories(name,calculation_type,default_points,points_per_unit,max_points),events(title)").eq("academic_year_id",year.id).in("status",["submitted","under_review"]).order("created_at");
+    if (isAdmin) {
+      const [{data:claims},{data:attendanceImports},{data:corrections},{data:officerAttendance},{data:absenceRequests},{data:syncInbox}] = await Promise.all([
+        claimQuery,
+        supabase.from("attendance_imports").select("id,source_type,submitted_at,submitted_name,submitted_email,event_code,status,review_reason,created_at").eq("academic_year_id",year.id).in("status",["unmatched_member","unmatched_event","duplicate","outside_window","pending_review"]).order("created_at",{ascending:false}),
+        supabase.from("correction_requests").select("id,issue_type,description,status,created_at,profiles!correction_requests_member_id_fkey(display_name),events(title)").eq("academic_year_id",year.id).in("status",["submitted","under_review"]).order("created_at"),
+        supabase.from("officer_attendance").select("id,status,attendance_evidence_status,first_join_at,last_leave_at,late_minutes,early_departure_minutes,profiles!officer_attendance_officer_id_fkey(display_name),events(title,start_datetime)").eq("academic_year_id",year.id).order("created_at",{ascending:false}),
+        supabase.from("officer_absence_requests").select("id,reason,notice_given_at,handoff_required,handoff_plan,status,profiles!officer_absence_requests_officer_id_fkey(display_name),events(title,start_datetime)").eq("status","pending").order("created_at"),
+        reviewDb.from("sync_inbox_events").select("id,event_type,status,error_message,received_at,sync_connections!inner(purpose,display_name)").eq("sync_connections.purpose","adviser_ledger").in("status",["received","needs_mapping","failed"]).order("received_at",{ascending:false}).limit(50),
+      ]);
+      data.claims=claims??[]; data.attendanceImports=attendanceImports??[]; data.corrections=corrections??[]; data.officerAttendance=officerAttendance??[]; data.absenceRequests=absenceRequests??[]; data.syncInbox=syncInbox??[];
+    } else {
+      const {data:claims}=await claimQuery; data.claims=claims??[];
+    }
   } else if (slug === "manage/attendance-review") {
     const [{ data: rows }, { data: corrections }] = await Promise.all([
       supabase.from("attendance_imports").select("id,source_type,submitted_at,submitted_name,submitted_email,event_code,status,review_reason,created_at").eq("academic_year_id",year.id).in("status",["unmatched_member","unmatched_event","duplicate","outside_window","pending_review"]).order("created_at",{ascending:false}),
       supabase.from("correction_requests").select("id,issue_type,description,status,created_at,profiles!correction_requests_member_id_fkey(display_name),events(title)").eq("academic_year_id",year.id).in("status",["submitted","under_review"]).order("created_at"),
     ]);data.rows=rows??[];data.corrections=corrections??[];
   } else if (slug === "manage/point-review") {
-    const { data: rows } = await supabase.from("point_claims").select("id,activity_date,quantity,member_description,evidence_url,status,created_at,profiles!point_claims_member_id_fkey(member_id,display_name),point_categories(name,calculation_type,default_points,points_per_unit,max_points),events(title)").eq("academic_year_id",year.id).in("status",["submitted","under_review"]).order("created_at");data.rows=rows??[];
+    // The server already authorized this route. Use the service client so an
+    // officer can see the claimant's display name without granting officers
+    // broad RLS access to private profile columns such as email addresses.
+    const reviewDb = createSupabaseAdminClient() ?? supabase;
+    const { data: rows } = await reviewDb.from("point_claims").select("id,activity_date,quantity,member_description,evidence_url,status,created_at,profiles!point_claims_member_id_fkey(member_id,display_name),point_categories(name,calculation_type,default_points,points_per_unit,max_points),events(title)").eq("academic_year_id",year.id).in("status",["submitted","under_review"]).order("created_at");data.rows=rows??[];
   } else if (slug === "manage/officer-team") {
     const { data: rows } = await supabase.from("profiles").select("id,member_id,display_name,officer_position,account_role,active").not("officer_position","is",null).order("display_name");data.rows=rows??[];
   } else if (slug === "manage/officer-attendance") {
     const [{ data: rows }, { data: requests }] = await Promise.all([
       supabase.from("officer_attendance").select("id,status,attendance_evidence_status,first_join_at,last_leave_at,late_minutes,early_departure_minutes,profiles!officer_attendance_officer_id_fkey(display_name),events(title,start_datetime)").eq("academic_year_id",year.id).order("created_at",{ascending:false}),
-      isExec ? supabase.from("officer_absence_requests").select("id,reason,notice_given_at,handoff_required,handoff_plan,status,profiles!officer_absence_requests_officer_id_fkey(display_name),events(title,start_datetime)").eq("status","pending").order("created_at") : Promise.resolve({data:[]}),
+      isAdmin ? supabase.from("officer_absence_requests").select("id,reason,notice_given_at,handoff_required,handoff_plan,status,profiles!officer_absence_requests_officer_id_fkey(display_name),events(title,start_datetime)").eq("status","pending").order("created_at") : Promise.resolve({data:[]}),
     ]);data.rows=rows??[];data.requests=requests??[];
   } else if (slug === "manage/imports") {
     const { data: rows } = await supabase.from("import_batches").select("id,import_type,source_type,filename,status,row_count,ready_count,duplicate_count,unmatched_count,conflict_count,created_at").eq("academic_year_id",year.id).order("created_at",{ascending:false});data.rows=rows??[];
@@ -151,8 +204,15 @@ export async function loadPortalContext(slug: string): Promise<PortalContext> {
       supabase.from("profiles").select("id",{count:"exact",head:true}).eq("approved",false),
       supabase.from("point_claims").select("id",{count:"exact",head:true}).in("status",["submitted","under_review"]),
       supabase.from("correction_requests").select("id",{count:"exact",head:true}).in("status",["submitted","under_review"]),
-      supabase.from("profiles").select("id,member_id,display_name,account_role,officer_position,active").in("account_role",["admin","adviser"]).order("account_role"),
+      supabase.from("profiles").select("id,member_id,display_name,account_role,officer_position,active").eq("account_role","adviser").order("display_name"),
     ]);data.members=members??0;data.pendingMembers=pendingMembers??0;data.pendingClaims=pendingClaims??0;data.pendingCorrections=pendingCorrections??0;data.reviewers=reviewers??[];
+  } else if (slug === "admin/settings") {
+    const [{data:rules},{data:requirements},{data:policy},{data:audit}] = await Promise.all([
+      supabase.from("point_categories").select("*").eq("academic_year_id",year.id).order("sort_order"),
+      supabase.from("graduation_requirements").select("*").eq("academic_year_id",year.id).order("graduation_year"),
+      supabase.from("officer_policy_thresholds").select("*").eq("academic_year_id",year.id).order("threshold"),
+      supabase.from("audit_log").select("id,action,entity_type,entity_id,metadata,created_at,profiles(display_name)").order("created_at",{ascending:false}).limit(50),
+    ]); data.rules=rules??[]; data.requirements=requirements??[]; data.policy=policy??[]; data.audit=audit??[];
   } else if (slug === "admin/point-rules") {
     const { data: rows } = await supabase.from("point_categories").select("*").eq("academic_year_id",year.id).order("sort_order");data.rows=rows??[];
   } else if (slug === "admin/cord-rules") {

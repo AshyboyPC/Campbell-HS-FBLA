@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requirePortalRole } from "@/lib/points/api-auth";
 
-const LEADERSHIP = ["secretary", "executive_leadership", "adviser", "admin"];
+const LEADERSHIP = ["adviser"];
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requirePortalRole(LEADERSHIP); if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });

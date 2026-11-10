@@ -1,4 +1,3 @@
-// Never use @iconify/react inside this file.
 import { ImageResponse } from 'next/og';
 
 export const size = {

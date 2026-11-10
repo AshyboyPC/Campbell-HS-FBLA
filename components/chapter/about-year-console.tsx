@@ -2,6 +2,7 @@
 
 import {AnimatePresence,motion} from "framer-motion";
 import {useState} from "react";
+import {useMotionReady} from "@/components/chapter/motion";
 
 const years=[
  {
@@ -88,6 +89,7 @@ function YearArtwork({art,detail=false}:{art:YearArt;detail?:boolean}){
 
 export default function AboutYearConsole(){
  const [selected,setSelected]=useState(2);
+ const motionReady=useMotionReady();
  const active=years[selected];
  const moveSelection=(direction:number)=>setSelected(current=>(current+direction+years.length)%years.length);
 
@@ -102,7 +104,7 @@ export default function AboutYearConsole(){
 
   <div className="about-year-stage">
    <AnimatePresence mode="wait" initial={false}>
-    <motion.article id="chapter-year-panel" role="tabpanel" aria-labelledby={`year-tab-${selected}`} key={active.year} initial={{opacity:0,y:14}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} transition={{duration:.36,ease:[.22,1,.36,1]}}>
+    <motion.article id="chapter-year-panel" role="tabpanel" aria-labelledby={`year-tab-${selected}`} key={active.year} initial={motionReady?{opacity:0,y:14}:false} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} transition={{duration:.36,ease:[.22,1,.36,1]}}>
      <header className="about-year-banner"><span>{active.year} / {active.label}</span><h3>{active.title}</h3><b aria-hidden="true">↓↓</b></header>
      <div className="about-year-layout">
       <div className="about-year-copy">

@@ -2,8 +2,8 @@
 import { NextResponse } from "next/server";
 import { requirePortalRole } from "@/lib/points/api-auth";
 
-const STAFF = ["secretary", "executive_leadership", "adviser", "admin"];
-const EXEC = ["secretary", "executive_leadership", "adviser", "admin"];
+const STAFF = ["adviser"];
+const EXEC = ["adviser"];
 
 const csvCell = (value: unknown) => {
   const text = value == null ? "" : String(value);

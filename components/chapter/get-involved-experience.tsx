@@ -2,12 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import {useEffect,useLayoutEffect,useRef,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import gsap from "gsap";
+import {useAfterPageMotion} from "@/components/chapter/use-after-page-motion";
+import {CustomEase} from "gsap/CustomEase";
 import {ScrollTrigger} from "gsap/ScrollTrigger";
-import {ArrowDown,ArrowUpRight,Check} from "lucide-react";
+import {ArrowDown,ArrowUpRight,Check} from "@/components/icons";
 import WordShutterReveal from "@/components/chapter/word-shutter-reveal";
 import {SiteIcon,type SiteIconName} from "@/components/chapter/iconography";
+
+gsap.registerPlugin(CustomEase,ScrollTrigger);
 
 const membershipForm="https://docs.google.com/forms/d/e/1FAIpQLSdCSnrChNqB9gcWFnLNH8K9mFHUo1UCQx2imX0LDlXcv2PBuQ/viewform";
 const bandInvite="https://band.us/n/ada8bajda70eP";
@@ -38,22 +42,41 @@ function DeadlineCountdown(){
   return()=>window.clearInterval(timer);
  },[]);
  const units=[[countdown?.days??"--","DAYS"],[countdown?.hours??"--","HOURS"],[countdown?.minutes??"--","MIN"],[countdown?.seconds??"--","SEC"]];
- return <div id="dues-countdown" className="gi-deadline-instrument" data-join-item><div className="gi-points-seal"><span>EARN</span><strong>50</strong><b>POINTS</b></div><div className="gi-countdown-body"><div className="gi-countdown-head"><p>{countdown?.complete?"THE DUES DEADLINE HAS ARRIVED":"DUES DEADLINE COUNTDOWN"}</p><time dateTime="2026-09-28T23:59:59-04:00">SEP 28 / 11:59 PM</time></div><div className="gi-countdown-grid" aria-label={countdown?`${countdown.days} days, ${countdown.hours} hours, ${countdown.minutes} minutes, and ${countdown.seconds} seconds until the dues deadline`:"Loading dues deadline countdown"}>{units.map(([value,label])=><div key={label}><span className="gi-ticker-window"><b key={value}>{value}</b></span><small>{label}</small></div>)}</div><div className="gi-deadline-track" aria-hidden="true"><span style={{width:`${countdown?.progress??0}%`}}/><i style={{left:`${countdown?.progress??0}%`}}>NOW</i></div><div className="gi-countdown-foot"><p>Pay through MyPaymentsPlus by September 28, then complete the dues challenge check-in in BAND. The full challenge window closes October 1.</p><ArrowLink href={membershipForm} external className="gi-button-light">Open membership form</ArrowLink></div></div></div>
+ return <div id="dues-countdown" className="gi-deadline-instrument"><div className="gi-points-seal"><span>EARN</span><strong>50</strong><b>POINTS</b></div><div className="gi-countdown-body"><div className="gi-countdown-head"><p>{countdown?.complete?"THE DUES DEADLINE HAS ARRIVED":"DUES DEADLINE COUNTDOWN"}</p><time dateTime="2026-09-28T23:59:59-04:00">SEP 28 / 11:59 PM</time></div><div className="gi-countdown-grid" aria-label={countdown?`${countdown.days} days, ${countdown.hours} hours, ${countdown.minutes} minutes, and ${countdown.seconds} seconds until the dues deadline`:"Loading dues deadline countdown"}>{units.map(([value,label])=><div key={label}><span className="gi-ticker-window"><b key={value}>{value}</b></span><small>{label}</small></div>)}</div><div className="gi-deadline-track" aria-hidden="true"><span style={{width:`${countdown?.progress??0}%`}}/><i style={{left:`${countdown?.progress??0}%`}}>NOW</i></div><div className="gi-countdown-foot"><p>Pay through MyPaymentsPlus by September 28, then complete the dues challenge check-in in BAND. The full challenge window closes October 1.</p><ArrowLink href={membershipForm} external className="gi-button-light">Open membership form</ArrowLink></div></div></div>
 }
 
 export default function GetInvolvedExperience(){
  const root=useRef<HTMLDivElement>(null);
- useLayoutEffect(()=>{
-  if(!root.current)return;
-  gsap.registerPlugin(ScrollTrigger);
-  if(window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;
-  const context=gsap.context(()=>{
-   gsap.timeline({defaults:{ease:"power3.out"}}).from(".gi-hero .gi-label",{y:18,opacity:0,duration:.5}).from(".gi-hero h1 span",{yPercent:115,duration:.85,stagger:.08},.08).from(".gi-hero-copy,.gi-hero-route",{y:26,opacity:0,duration:.7,stagger:.1},.38);
-   gsap.utils.toArray<HTMLElement>("[data-join-reveal]").forEach(section=>{const items=section.querySelectorAll("[data-join-item]");gsap.from(items.length?items:section,{y:46,opacity:0,duration:.8,stagger:.09,ease:"power3.out",scrollTrigger:{trigger:section,start:"top 82%",once:true}})});
-   gsap.fromTo(".gi-route-line",{scaleX:0},{scaleX:1,ease:"none",scrollTrigger:{trigger:".gi-join-path",start:"top 70%",end:"bottom 45%",scrub:.5}});
-  },root);
-  return()=>context.revert();
- },[]);
+ useAfterPageMotion(root,()=>{
+  const motion=gsap.matchMedia(root.current);
+  motion.add("(prefers-reduced-motion: no-preference)",()=>{
+   const ease=CustomEase.create("join-editorial-ease","M0,0 C0.14,0.82 0.22,1 1,1");
+   gsap.timeline({defaults:{ease}}).from(".gi-hero .gi-label",{y:18,autoAlpha:0,duration:.5}).from(".gi-hero h1 span",{yPercent:115,autoAlpha:0,duration:.85,stagger:.08},.08).from(".gi-hero-copy,.gi-hero-route",{y:26,autoAlpha:0,duration:.7,stagger:.1},.38);
+
+   const groups=[
+    {section:".gi-start",selector:".gi-heading",from:{x:-28,autoAlpha:0},stagger:0,duration:.65},
+    {section:".gi-start",selector:".gi-join-path article",from:{y:34,rotation:(index:number)=>index%2?1.5:-1.5,autoAlpha:0},stagger:.11,duration:.68,ease:"back.out(1.3)"},
+    {section:".gi-membership",selector:".gi-heading",from:{y:25,autoAlpha:0},stagger:0,duration:.62},
+    {section:".gi-membership",selector:".gi-plan",from:{x:(index:number)=>index?30:-30,rotationY:(index:number)=>index?8:-8,autoAlpha:0},stagger:.14,duration:.78},
+    {section:".gi-band",selector:".gi-band-copy",from:{x:-38,autoAlpha:0},stagger:0,duration:.72},
+    {section:".gi-band",selector:".gi-band-pass",from:{x:26,rotationY:-12,scale:.95,autoAlpha:0},stagger:0,duration:.9,ease:"back.out(1.2)"},
+    {section:".gi-meetings",selector:".gi-meeting-number",from:{scale:.72,rotation:-9,autoAlpha:0},stagger:0,duration:.72,ease:"back.out(1.6)"},
+    {section:".gi-meetings",selector:".gi-meeting-main,.gi-week-pattern p",from:{x:24,autoAlpha:0},stagger:.1,duration:.66},
+    {section:".gi-committees",selector:".gi-committee-list article",from:{clipPath:"inset(0 0 0 100%)",autoAlpha:0},stagger:.09,duration:.74},
+    {section:".gi-leadership",selector:".gi-role-list li",from:{x:34,autoAlpha:0},stagger:{each:.08,from:"end" as const},duration:.58},
+    {section:".gi-next",selector:".gi-next-links .gi-button",from:{y:17,scale:.92,autoAlpha:0},stagger:{each:.09,from:"center" as const},duration:.58,ease:"back.out(1.4)"},
+   ];
+
+   gsap.set(".gi-band",{perspective:1100});
+   groups.forEach(({section,selector,from,stagger,duration,ease:itemEase})=>{
+    const trigger=root.current?.querySelector(section);
+    const targets=gsap.utils.toArray<HTMLElement>(selector,root.current);
+    if(!trigger||!targets.length)return;
+    gsap.fromTo(targets,from,{x:0,y:0,scale:1,rotation:0,rotationY:0,clipPath:"inset(0 0 0 0)",autoAlpha:1,duration,ease:itemEase||ease,stagger,scrollTrigger:{trigger,start:"top 83%",once:true}});
+   });
+  });
+  return()=>motion.revert();
+ });
 
  return <div className="get-involved-page" ref={root}>
   <header className="gi-hero"><div className="gi-hero-inner"><div className="gi-hero-main"><Label>GET INVOLVED / CAMPBELL FBLA 2026–27</Label><h1><span>SHOW UP.</span><span>PICK A <em>LANE.</em></span><span>MAKE IT COUNT.</span></h1></div><div className="gi-hero-copy"><p>Campbell FBLA works when students do more than put their name on a roster. Join the chapter, connect with members, choose where you want to contribute, and start building skills through real work.</p><ArrowLink href="#start">Start here</ArrowLink></div></div><nav className="gi-hero-route" aria-label="Get involved steps"><a href="#start"><b>01</b><span>Join</span></a><a href="#band"><b>02</b><span>Connect</span></a><a href="#meetings"><b>03</b><span>Show up</span></a><a href="#committees"><b>04</b><span>Choose your lane</span></a><ArrowDown aria-hidden="true"/></nav></header>
@@ -71,7 +94,7 @@ export default function GetInvolvedExperience(){
 
    <section id="leadership" className="gi-section gi-leadership" data-join-reveal><div className="gi-leadership-intro" data-join-item><Label>OPEN LEADERSHIP / DEADLINE SEPTEMBER 9</Label><h2>DON’T WAIT<br/>TO <em>LEAD.</em></h2><p>Leadership applications opened August 26. These roles give students a defined part of the chapter to own, organize, and improve.</p><p className="gi-leadership-note">Ask for the current application instructions in BAND or speak with a chapter adviser or officer.</p></div><ol className="gi-role-list">{roles.map((role,index)=><li key={role} data-join-item><span>0{index+1}</span><b>{role}</b></li>)}</ol></section>
 
-   <section className="gi-section gi-points" data-join-reveal><div className="gi-points-score" data-join-item><SiteIcon name="trophy" aria-hidden="true"/><strong>250+</strong><span>CLASS-BASED CORD TARGETS</span></div><div className="gi-points-copy" data-join-item><Label>MAKE PARTICIPATION COUNT</Label><h2>SHOW UP.<br/>DO THE WORK.<br/><em>TRACK IT.</em></h2><WordShutterReveal cover="blue" text="Graduation-cord requirements are based on class year: 250 points for the Class of 2027, 375 for 2028, and 500 for the Class of 2029 and beyond. Members earn toward that total through dues, meetings, socials, workshops, service, competition preparation, conferences, and results."/><div className="gi-point-examples"><span><b>50</b>Verified dues</span><span><b>5</b>Chapter meeting</span><span><b>10</b>FLC or SLC</span><span><b>15</b>Compete at a conference</span></div><small>The 2025–26 activity schedule was confirmed unchanged for 2026–27. Official records are verified through the Member Portal.</small></div></section>
+   <section className="gi-section gi-points"><div className="gi-points-score" data-join-item><SiteIcon name="trophy" aria-hidden="true"/><strong>250+</strong><span>CLASS-BASED CORD TARGETS</span></div><div className="gi-points-copy" data-join-item><Label>MAKE PARTICIPATION COUNT</Label><h2>SHOW UP.<br/>DO THE WORK.<br/><em>TRACK IT.</em></h2><WordShutterReveal cover="blue" text="Graduation-cord requirements are based on class year: 250 points for the Class of 2027, 375 for 2028, and 500 for the Class of 2029 and beyond. Members earn toward that total through dues, meetings, socials, workshops, service, competition preparation, conferences, and results."/><div className="gi-point-examples"><span><b>50</b>Verified dues</span><span><b>5</b>Chapter meeting</span><span><b>10</b>FLC or SLC</span><span><b>15</b>Compete at a conference</span></div><small>The 2025–26 activity schedule was confirmed unchanged for 2026–27. Official records are verified through the Member Portal.</small></div></section>
 
    <section className="gi-section gi-next" data-join-reveal><Label>CHOOSE YOUR NEXT MOVE</Label><h2 data-join-item>WHAT DO YOU<br/>WANT TO DO <em>FIRST?</em></h2><div className="gi-next-links"><ArrowLink href={membershipForm} external className="gi-next-primary">I’m ready to join</ArrowLink><ArrowLink href={bandInvite} external>I need member updates</ArrowLink><ArrowLink href="/compete">I want to compete</ArrowLink><ArrowLink href="/contact">I have a question</ArrowLink></div></section>
   </main>

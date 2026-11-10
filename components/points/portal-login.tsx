@@ -1,11 +1,13 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, LoaderCircle, Mail, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, LoaderCircle, Mail, ShieldCheck } from "@/components/icons";
+import { gsap } from "gsap";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export function PortalLogin({ configured }: { configured: boolean }) {
+  const shellRef = useRef<HTMLDivElement>(null);
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "loading" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -13,9 +15,9 @@ export function PortalLogin({ configured }: { configured: boolean }) {
   async function submit(event: FormEvent) {
     event.preventDefault();
     const normalizedEmail = email.trim().toLowerCase();
-    if (!/^(?:[a-z0-9]+\.[a-z0-9]+|fbla)@campbellhigh\.net$/.test(normalizedEmail)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       setState("error");
-      setMessage("Use first.last@campbellhigh.net (or the official adviser account). ");
+      setMessage("Enter the personal Google email you used for FBLA Connect.");
       return;
     }
     const supabase = createSupabaseBrowserClient();
@@ -26,40 +28,59 @@ export function PortalLogin({ configured }: { configured: boolean }) {
       provider: "google",
       options: {
         redirectTo,
-        queryParams: { hd: "campbellhigh.net", login_hint: normalizedEmail, prompt: "select_account" },
+        queryParams: { login_hint: normalizedEmail, prompt: "select_account" },
       },
     });
     if (error) {
       setState("error");
-      setMessage("We couldn’t open Campbell Google sign-in. Please try again.");
+      setMessage("We couldn’t open Google sign-in. Please try again.");
       return;
     }
   }
 
-  return <div className="portal-auth-shell">
+  useEffect(() => {
+    if (!shellRef.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const context = gsap.context(() => {
+      gsap.from("[data-auth-reveal]", { y: 22, opacity: 0, duration: .72, stagger: .07, ease: "power3.out" });
+      gsap.fromTo(".portal-auth-route", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1.65, ease: "power2.inOut" });
+      gsap.to(".portal-auth-star", { rotate: 360, transformOrigin: "50% 50%", duration: 18, repeat: -1, ease: "none" });
+      gsap.to(".portal-auth-orbit-dot", { y: -7, duration: 1.7, repeat: -1, yoyo: true, ease: "sine.inOut" });
+    }, shellRef);
+    return () => context.revert();
+  }, []);
+
+  return <div className="portal-auth-shell" ref={shellRef}>
     <div className="portal-auth-card">
-      <div className="portal-auth-mark"><span>CF</span><b>MEMBER PORTAL · 2026—27</b></div>
-      <p className="portal-kicker">CAMPBELL ACCOUNT ACCESS</p>
-      <h1>Welcome.<br/><em>Let&apos;s find your record.</em></h1>
-      <p>Enter your Campbell email, then continue through Google. There is no separate portal password or email confirmation link.</p>
+      <div className="portal-auth-mark" data-auth-reveal><span>CF</span><b>MEMBER PORTAL · 2026—27</b></div>
+      <p className="portal-kicker" data-auth-reveal>YOUR FBLA RECORD</p>
+      <h1 data-auth-reveal>Welcome back.<br/><em>Pick up your progress.</em></h1>
+      <p data-auth-reveal>Use the personal Google account connected to your FBLA Connect registration. There is no separate portal password.</p>
       {!configured ? <div className="portal-setup-note"><strong>Portal connection required</strong><span>Add the Supabase environment variables, apply the migrations, and restart the site.</span></div> : <form onSubmit={submit}>
-        <label htmlFor="portal-email">Your Campbell email</label>
-        <div className="portal-email-field"><Mail size={19}/><input id="portal-email" type="email" autoComplete="email" required value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="first.last@campbellhigh.net"/></div>
+        <label htmlFor="portal-email">Your FBLA Connect email</label>
+        <div className="portal-email-field"><Mail size={19}/><input id="portal-email" type="email" autoComplete="email" required value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="your.personal@email.com"/></div>
         {state === "error" && <p className="portal-form-error" role="alert">{message}</p>}
-        <button disabled={state === "loading"}>{state === "loading" ? <LoaderCircle className="portal-spin"/> : <>Continue with Campbell Google <ArrowRight size={18}/></>}</button>
+        <button disabled={state === "loading"}>{state === "loading" ? <LoaderCircle className="portal-spin"/> : <>Continue with Google <ArrowRight size={18}/></>}</button>
       </form>}
       <Link className="portal-auth-back" href="/points"><ArrowLeft size={15}/> Back to portal overview</Link>
     </div>
     <aside className="portal-auth-guide">
-      <ShieldCheck size={28}/>
-      <p className="portal-kicker">PRIVATE BY DESIGN</p>
-      <h2>One school account.<br/>The right access.</h2>
-      <div>
-        <p><i>01</i><span><b>School identity</b>Use your first.last@campbellhigh.net account.</span><Check size={16}/></p>
-        <p><i>02</i><span><b>Roster match</b>Known members connect to their existing chapter record.</span><Check size={16}/></p>
-        <p><i>03</i><span><b>Role-aware portal</b>Members, officers, administrators, and advisers see the correct tools.</span><Check size={16}/></p>
+      <svg className="portal-auth-orbit" viewBox="0 0 620 430" aria-hidden="true">
+        <path className="portal-auth-route portal-auth-route-back" pathLength="1" d="M38 296C116 58 303 31 442 93C574 151 559 329 406 353C269 375 192 267 267 191C332 126 431 171 416 248"/>
+        <path className="portal-auth-route" pathLength="1" d="M38 296C116 58 303 31 442 93C574 151 559 329 406 353C269 375 192 267 267 191C332 126 431 171 416 248"/>
+        <circle className="portal-auth-orbit-dot" cx="38" cy="296" r="17"/>
+        <path className="portal-auth-star" d="M416 218C421 237 427 243 446 248C427 253 421 259 416 278C411 259 405 253 386 248C405 243 411 237 416 218Z"/>
+      </svg>
+      <div className="portal-auth-guide-copy">
+        <ShieldCheck size={28}/>
+        <p className="portal-kicker">PRIVATE BY DESIGN</p>
+        <h2>One Google account.<br/>The right access.</h2>
+        <div>
+          <p><i>01</i><span><b>Use your real login</b>Choose the personal Google account used for FBLA Connect.</span><Check size={16}/></p>
+          <p><i>02</i><span><b>Exact email match</b>Your account connects only to the same email on the chapter record.</span><Check size={16}/></p>
+          <p><i>03</i><span><b>Adviser-approved access</b>Unmatched accounts wait safely for an adviser to review.</span><Check size={16}/></p>
+        </div>
+        <small>Officers review submitted claims. Advisers manage rules, balances, deductions, and access.</small>
       </div>
-      <small>New or unmatched accounts wait for chapter approval. Adviser accounts are oversight-only.</small>
     </aside>
   </div>;
 }

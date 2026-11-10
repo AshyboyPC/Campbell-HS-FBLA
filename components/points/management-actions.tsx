@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus } from "@/components/icons";
 
 async function send(url: string, method: "POST" | "PATCH", body: Record<string, unknown>) {
   const response = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -12,7 +12,7 @@ async function send(url: string, method: "POST" | "PATCH", body: Record<string, 
 
 export function MemberApprovalActions({ id, approved, duesStatus, accountRole }: { id: string; approved: boolean; duesStatus: string; accountRole: string }) {
   const router = useRouter(); const [state, setState] = useState("idle"); const [role,setRole]=useState(accountRole);
-  const securedRole = ["secretary", "executive_leadership", "adviser", "admin"].includes(accountRole);
+  const securedRole = accountRole === "adviser";
   async function update(body: Record<string, unknown>) { setState("saving"); try { await send(`/api/points/members/${id}`, "PATCH", body); setState("saved"); router.refresh(); } catch (error) { setState(error instanceof Error ? error.message : "error"); } }
   return <div className="portal-inline-actions"><button disabled={state === "saving" || approved} onClick={() => update({ approved: true, membershipStatus: "active" })}>{approved ? "Approved" : "Approve"}</button><button disabled={state === "saving" || duesStatus === "paid"} onClick={() => update({ duesStatus: "paid" })}>{duesStatus === "paid" ? "Dues verified" : "Verify dues"}</button>{securedRole?<small>Secured reviewer: {accountRole.replaceAll("_"," ")}</small>:<><select value={role} onChange={event=>setRole(event.target.value)}><option value="member">Member</option><option value="officer">Officer</option></select><button disabled={state==="saving"||role===accountRole} onClick={()=>update({accountRole:role})}>Save access</button></>}{!["idle", "saving", "saved"].includes(state) && <small>{state}</small>}</div>;
 }
