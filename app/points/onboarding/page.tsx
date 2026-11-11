@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default async function OnboardingPage() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
-  if (!user?.email) redirect("/points/login");
+  if (!user?.email || !user.email_confirmed_at) redirect("/points/login");
   const { data: profile } = await supabase!.from("profiles").select("onboarding_completed,approved,active,account_role").eq("auth_user_id", user.id).maybeSingle();
   if (profile?.onboarding_completed) redirect(profile.account_role === "adviser" ? "/points/admin/dashboard" : "/points/dashboard");
   const meta = user.user_metadata || {}; const emailName = user.email.split("@")[0].split(".");

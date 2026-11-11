@@ -4,10 +4,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") || "/points/onboarding";
+  const tokenHash = url.searchParams.get("token_hash");
   const supabase = await createSupabaseServerClient();
-  if (code && supabase) {
-    await supabase.auth.exchangeCodeForSession(code);
+  if (supabase && (code || tokenHash)) {
+    const { error } = code
+      ? await supabase.auth.exchangeCodeForSession(code)
+      : await supabase.auth.verifyOtp({ token_hash: tokenHash!, type: "email" });
+    if (!error) return NextResponse.redirect(new URL("/points/onboarding", url.origin));
   }
-  return NextResponse.redirect(new URL(next.startsWith("/points") ? next : "/points/dashboard", url.origin));
+  return NextResponse.redirect(new URL("/points/login?authError=1", url.origin));
 }

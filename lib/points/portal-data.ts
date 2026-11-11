@@ -39,7 +39,7 @@ export async function loadPortalContext(slug: string): Promise<PortalContext> {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return empty;
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return empty;
+  if (!user?.email_confirmed_at) return empty;
   empty.authenticated = true;
   const [{ data: profile }, { data: year }] = await Promise.all([
     supabase.from("profiles").select("id,member_id,first_name,last_name,display_name,graduation_year,grade_level,membership_status,membership_tier,dues_status,account_role,officer_position,active,approved,join_date,onboarding_completed,band_display_name,primary_committee,roster_match_status").eq("auth_user_id", user.id).maybeSingle(),
@@ -154,6 +154,23 @@ export async function loadPortalContext(slug: string): Promise<PortalContext> {
       supabase.from("point_categories").select("id,name").eq("academic_year_id",year.id).eq("active",true).order("sort_order"),
     ]);data.member=member;data.totals=totals;data.attendance=attendance??[];data.transactions=transactions??[];data.claims=claims??[];data.categories=categories??[];
   } else if (slug === "manage/members") {
+    if (profile.account_role === "adviser") {
+      const admin = createSupabaseAdminClient();
+      if (admin) {
+        const { data: requests } = await admin.from("audit_log").select("id,entity_id,metadata")
+          .eq("action", "account_match_requested").eq("entity_type", "profile")
+          .order("created_at", { ascending: false }).limit(200);
+        const ids = [...new Set((requests ?? []).map(row => row.entity_id).filter(Boolean))];
+        if (ids.length) {
+          const { data: targets } = await admin.from("profiles").select("id,display_name")
+            .in("id", ids).is("auth_user_id", null).eq("account_role", "member").eq("active", true)
+            .in("membership_status", ["active", "pending"]);
+          const names = new Map((targets ?? []).map(row => [row.id, row.display_name]));
+          data.accountMatches = (requests ?? []).filter(row => names.has(row.entity_id))
+            .map(row => ({ id: row.id, name: names.get(row.entity_id), email: row.metadata.email }));
+        }
+      }
+    }
     const { data: rows } = await supabase.from("profiles").select("id,member_id,display_name,graduation_year,membership_status,membership_tier,dues_status,account_role,officer_position,approved,active").neq("account_role","adviser").order("display_name"); data.rows=rows??[];
   } else if (slug === "manage/events" || slug.startsWith("manage/events/")) {
     const [{ data: rows }, { data: categories }, { data: connections }, { data: recentRuns }] = await Promise.all([

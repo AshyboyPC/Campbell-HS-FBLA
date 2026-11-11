@@ -6,35 +6,45 @@ import { ArrowLeft, ArrowRight, Check, LoaderCircle, Mail, ShieldCheck } from "@
 import { gsap } from "gsap";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-export function PortalLogin({ configured }: { configured: boolean }) {
+export function PortalLogin({ configured, failedSignIn }: { configured: boolean; failedSignIn: boolean }) {
   const shellRef = useRef<HTMLDivElement>(null);
   const [email, setEmail] = useState("");
-  const [state, setState] = useState<"idle" | "loading" | "error">("idle");
-  const [message, setMessage] = useState("");
+  const [state, setState] = useState<"idle" | "loading" | "sent" | "error">(failedSignIn ? "error" : "idle");
+  const [message, setMessage] = useState(failedSignIn ? "That sign-in link could not be verified. Request a new link and open it in this browser." : "");
 
-  async function submit(event: FormEvent) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const method = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("value");
     const normalizedEmail = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       setState("error");
-      setMessage("Enter the personal Google email you used for FBLA Connect.");
+      setMessage("Enter the personal email you used for FBLA Connect.");
       return;
     }
     const supabase = createSupabaseBrowserClient();
     if (!supabase) return;
     setState("loading");
-    const redirectTo = `${window.location.origin}/points/auth/callback?next=/points/onboarding`;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo,
-        queryParams: { login_hint: normalizedEmail, prompt: "select_account" },
-      },
-    });
-    if (error) {
+    setMessage("");
+    const redirectTo = `${window.location.origin}/points/auth/callback`;
+    try {
+      if (method === "email") {
+        const { error } = await supabase.auth.signInWithOtp({
+          email: normalizedEmail,
+          options: { emailRedirectTo: redirectTo },
+        });
+        if (error) throw error;
+        setState("sent");
+        setMessage("Check your inbox for the sign-in link. Open it in this browser to continue.");
+        return;
+      }
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo, queryParams: { login_hint: normalizedEmail, prompt: "select_account" } },
+      });
+      if (error) throw error;
+    } catch {
       setState("error");
-      setMessage("We couldn’t open Google sign-in. Please try again.");
-      return;
+      setMessage(method === "email" ? "We couldn’t send a sign-in link. Please try again." : "We couldn’t open Google sign-in. Please try again.");
     }
   }
 
@@ -54,12 +64,14 @@ export function PortalLogin({ configured }: { configured: boolean }) {
       <div className="portal-auth-mark" data-auth-reveal><span>CF</span><b>MEMBER PORTAL · 2026—27</b></div>
       <p className="portal-kicker" data-auth-reveal>YOUR FBLA RECORD</p>
       <h1 data-auth-reveal>Welcome back.<br/><em>Pick up your progress.</em></h1>
-      <p data-auth-reveal>Use the personal Google account connected to your FBLA Connect registration. There is no separate portal password.</p>
+      <p data-auth-reveal>Use the personal email you registered with in FBLA Connect. Sign in with Google or get a link by email.</p>
       {!configured ? <div className="portal-setup-note"><strong>Portal connection required</strong><span>Add the Supabase environment variables, apply the migrations, and restart the site.</span></div> : <form onSubmit={submit}>
-        <label htmlFor="portal-email">Your FBLA Connect email</label>
-        <div className="portal-email-field"><Mail size={19}/><input id="portal-email" type="email" autoComplete="email" required value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="your.personal@email.com"/></div>
+        <label htmlFor="portal-email">Personal email used for FBLA Connect</label>
+        <div className="portal-email-field"><Mail size={19}/><input id="portal-email" type="email" autoComplete="email" required value={email} onChange={(e)=>{setEmail(e.target.value); if (state !== "loading") setState("idle");}} placeholder="your.personal@email.com"/></div>
+        {state === "sent" && <p role="status">{message}</p>}
         {state === "error" && <p className="portal-form-error" role="alert">{message}</p>}
-        <button disabled={state === "loading"}>{state === "loading" ? <LoaderCircle className="portal-spin"/> : <>Continue with Google <ArrowRight size={18}/></>}</button>
+        <button type="submit" value="google" disabled={state === "loading"}>{state === "loading" ? <LoaderCircle className="portal-spin"/> : <>Continue with Google <ArrowRight size={18}/></>}</button>
+        <button type="submit" value="email" disabled={state === "loading" || state === "sent"}>Email me a sign-in link <Mail size={18}/></button>
       </form>}
       <Link className="portal-auth-back" href="/points"><ArrowLeft size={15}/> Back to portal overview</Link>
     </div>
@@ -73,11 +85,11 @@ export function PortalLogin({ configured }: { configured: boolean }) {
       <div className="portal-auth-guide-copy">
         <ShieldCheck size={28}/>
         <p className="portal-kicker">PRIVATE BY DESIGN</p>
-        <h2>One Google account.<br/>The right access.</h2>
+        <h2>Your personal email.<br/>Your chapter record.</h2>
         <div>
-          <p><i>01</i><span><b>Use your real login</b>Choose the personal Google account used for FBLA Connect.</span><Check size={16}/></p>
-          <p><i>02</i><span><b>Exact email match</b>Your account connects only to the same email on the chapter record.</span><Check size={16}/></p>
-          <p><i>03</i><span><b>Adviser-approved access</b>Unmatched accounts wait safely for an adviser to review.</span><Check size={16}/></p>
+          <p><i>01</i><span><b>Use your real login</b>Enter the personal email you used for FBLA Connect.</span><Check size={16}/></p>
+          <p><i>02</i><span><b>Exact email match</b>Use Google or an email link to verify your address.</span><Check size={16}/></p>
+          <p><i>03</i><span><b>Adviser-approved access</b>Confirm the name on a possible match and an adviser can link your email.</span><Check size={16}/></p>
         </div>
         <small>Officers review submitted claims. Advisers manage rules, balances, deductions, and access.</small>
       </div>
