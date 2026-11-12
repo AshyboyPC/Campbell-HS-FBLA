@@ -5,11 +5,13 @@ import { loadPortalContext } from "@/lib/points/portal-data";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Member Portal" };
-export default async function PortalRoute({ params }:{ params:Promise<{slug:string[]}> }) {
+export default async function PortalRoute({ params, searchParams }: {
+  params: Promise<{ slug: string[] }>;
+  searchParams: Promise<{ period?: string | string[]; grade?: string | string[] }>;
+}) {
   const { slug } = await params;
   const route = slug.join("/");
   const consolidatedRoutes: Record<string, string> = {
-    leaderboard: "/points/activity",
     attendance: "/points/activity",
     history: "/points/activity",
     rules: "/points/activity",
@@ -30,5 +32,5 @@ export default async function PortalRoute({ params }:{ params:Promise<{slug:stri
     "manage/reports": "/points/admin/settings",
   };
   if (consolidatedRoutes[route]) redirect(consolidatedRoutes[route]);
-  return <PortalShell context={await loadPortalContext(route)}/>;
+  return <PortalShell context={await loadPortalContext(route, route === "leaderboard" ? await searchParams : undefined)}/>;
 }

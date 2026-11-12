@@ -4,14 +4,45 @@ import { cordProgress, pointBalances } from "./cord-progress";
 // Call only after the portal has verified membership or adviser access. This
 // projection exposes the same member identities as the existing safe leaderboard.
 export async function readChapterBalances(admin: SupabaseClient, yearId: string) {
-  const [requirements, profiles] = await Promise.all([
+  const [requirements, members] = await Promise.all([
     admin.from("graduation_requirements").select("graduation_year,required_points")
       .eq("academic_year_id", yearId).eq("published", true),
-    readProfiles(admin),
+    readChapterPointBalances(admin, yearId),
   ]);
-  if (requirements.error || !profiles) return null;
+  if (requirements.error || !members) return null;
   const targets = new Map((requirements.data ?? []).map(row => [row.graduation_year, row.required_points]));
-  const rows = [];
+  const rows = members.flatMap(member => {
+    if (member.graduation_year === null) return [];
+    const target = targets.get(member.graduation_year) ?? null;
+    return [{
+      display_name: member.display_name,
+      graduation_year: member.graduation_year,
+      official_points: member.current,
+      cord_points: member.cumulative,
+      required_points: target,
+      cord_progress: cordProgress(member.cumulative, target),
+    }];
+  });
+
+  rows.sort((a, b) => b.official_points - a.official_points || a.display_name.localeCompare(b.display_name));
+  let rank = 0;
+  return rows.map((row, index) => {
+    if (index === 0 || rows[index - 1].official_points !== row.official_points) rank = index + 1;
+    return { ...row, rank };
+  });
+}
+
+type ChapterProfile = {
+  id: string;
+  display_name: string;
+  graduation_year: number | null;
+  grade_level: string | null;
+};
+
+export async function readChapterPointBalances(admin: SupabaseClient, yearId: string) {
+  const profiles = await readProfiles(admin);
+  if (!profiles) return null;
+  const rows: (ChapterProfile & ReturnType<typeof pointBalances>)[] = [];
 
   // Batch IDs to keep query URLs short. Page balances in case the chapter has
   // enough historical years to exceed the API's result limit.
@@ -33,33 +64,18 @@ export async function readChapterBalances(admin: SupabaseClient, yearId: string)
     }
 
     for (const member of members) {
-      const { current, cumulative } = pointBalances(byMember.get(member.id) ?? [], yearId);
-      const target = targets.get(member.graduation_year) ?? null;
-      rows.push({
-        display_name: member.display_name,
-        graduation_year: member.graduation_year,
-        official_points: current,
-        cord_points: cumulative,
-        required_points: target,
-        cord_progress: cordProgress(cumulative, target),
-      });
+      rows.push({ ...member, ...pointBalances(byMember.get(member.id) ?? [], yearId) });
     }
   }
-
-  rows.sort((a, b) => b.official_points - a.official_points || a.display_name.localeCompare(b.display_name));
-  let rank = 0;
-  return rows.map((row, index) => {
-    if (index === 0 || rows[index - 1].official_points !== row.official_points) rank = index + 1;
-    return { ...row, rank };
-  });
+  return rows;
 }
 
 async function readProfiles(admin: SupabaseClient) {
-  const profiles: { id: string; display_name: string; graduation_year: number }[] = [];
+  const profiles: ChapterProfile[] = [];
   for (let offset = 0; ; offset += 500) {
-    const { data, error } = await admin.from("profiles").select("id,display_name,graduation_year")
+    const { data, error } = await admin.from("profiles").select("id,display_name,graduation_year,grade_level")
       .eq("active", true).eq("approved", true).eq("membership_status", "active")
-      .neq("account_role", "adviser").not("graduation_year", "is", null)
+      .neq("account_role", "adviser")
       .order("id").range(offset, offset + 499);
     if (error) return null;
     profiles.push(...(data ?? []));

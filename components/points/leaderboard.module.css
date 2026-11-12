@@ -1,0 +1,119 @@
+.board {
+  color: var(--pn, #061a4e);
+  background: white;
+  border: 1px solid #061a4e24;
+  border-radius: 20px;
+  overflow: hidden;
+}
+.filters, .summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: clamp(16px, 3vw, 28px);
+}
+.filters {
+  border-bottom: 1px solid #061a4e1a;
+}
+.filters nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #eef3fb;
+}
+.filters a {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 8px;
+  color: inherit;
+  font-size: .875rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.filters a:hover {
+  background: #dce8fa;
+}
+.filters a[aria-current] {
+  color: white;
+  background: #102857;
+}
+.filters a:focus-visible {
+  outline: 2px solid #115ccd;
+  outline-offset: 2px;
+}
+.summary {
+  background: #f8faff;
+}
+.summary h2 {
+  margin: 0 0 5px;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+}
+.summary p {
+  margin: 0;
+  font-size: .9rem;
+  line-height: 1.5;
+  color: #415373;
+}
+.position {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: .875rem;
+  white-space: nowrap;
+}
+.position strong {
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+}
+.standings {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: .95rem;
+}
+.standings th, .standings td {
+  padding: 12px clamp(12px, 2.6vw, 28px);
+  border-top: 1px solid #061a4e1a;
+}
+.standings thead th {
+  color: #415373;
+  font-size: .8rem;
+}
+.standings th:first-child {
+  width: 1%;
+}
+.standings :is(th, td):last-child {
+  text-align: right;
+  white-space: nowrap;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.standings tbody th {
+  overflow-wrap: anywhere;
+}
+.rank {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ownRow {
+  background: #eaf2ff;
+}
+.ownRow td:first-child {
+  box-shadow: inset 3px 0 #2164c7;
+}
+.you {
+  display: inline-block;
+  margin-inline-start: 8px;
+  color: #174987;
+  font-size: .75rem;
+}
+.empty {
+  margin: 0;
+  padding: 24px;
+  color: #415373;
+}

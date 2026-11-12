@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
-import { CalendarSync, ChevronRight, ClipboardCheck, Gauge, LayoutDashboard, Settings2, ShieldCheck, Users } from "@/components/icons";
+import { CalendarSync, ChevronRight, ClipboardCheck, Gauge, LayoutDashboard, Settings2, ShieldCheck, Trophy, Users } from "@/components/icons";
 import { PortalSignOut } from "./portal-actions";
 
 type NavItem = { label:string; note:string; href:string; icon:React.ComponentType<{ size?:number; strokeWidth?:number }> };
@@ -13,9 +13,11 @@ const active = (pathname:string, href:string) => pathname === href || pathname.s
 export function PortalNavigation({ adviser, officer, year, displayName, roleLabel }: { adviser:boolean; staff:boolean; admin:boolean; officer:boolean; year?:string; displayName:string; roleLabel:string }) {
   const pathname=usePathname();
   const sidebarRef=useRef<HTMLElement>(null);
+  const leaderboard: NavItem = {label:"Leaderboards",note:"Chapter and grade rankings",href:"/points/leaderboard",icon:Trophy};
   const memberItems:NavItem[]=[
     {label:"Overview",note:"Your chapter snapshot",href:"/points/dashboard",icon:LayoutDashboard},
-    {label:"Activity",note:"Points, attendance, rank, and rules",href:"/points/activity",icon:Gauge},
+    {label:"Activity",note:"Points, attendance, and rules",href:"/points/activity",icon:Gauge},
+    leaderboard,
     {label:"Requests",note:"Submit work or fix a record",href:"/points/requests",icon:ClipboardCheck},
     ...(officer?[{label:"Officer center",note:"Status, meetings, and absence notice",href:"/points/officer",icon:ShieldCheck}]:[]),
     ...(officer?[{label:"Review points",note:"Approve submitted member evidence",href:"/points/manage/review",icon:ClipboardCheck}]:[]),
@@ -23,6 +25,7 @@ export function PortalNavigation({ adviser, officer, year, displayName, roleLabe
   const adviserItems:NavItem[]=[
     {label:"Overview",note:"Portal queues and health",href:"/points/admin/dashboard",icon:LayoutDashboard},
     {label:"Members",note:"Roster, access, and member records",href:"/points/manage/members",icon:Users},
+    leaderboard,
     {label:"Review",note:"Claims, attendance, and corrections",href:"/points/manage/review",icon:ClipboardCheck},
     {label:"Events & sync",note:"Events, Form, and adviser Sheet",href:"/points/manage/events",icon:CalendarSync},
     {label:"Settings",note:"Rules, reports, policy, and audit",href:"/points/admin/settings",icon:Settings2},
@@ -41,7 +44,7 @@ export function PortalNavigation({ adviser, officer, year, displayName, roleLabe
   return <aside className="portal-sidebar portal-sidebar-energy" ref={sidebarRef}>
     <Link className="portal-brand" href={adviser?"/points/admin/dashboard":"/points/dashboard"}><span>CF</span><b>{adviser?"Adviser Console":"Member Portal"}<small>{year}</small></b></Link>
     <nav className="portal-nav-stack" aria-label="Member Portal navigation">
-      {items.map(item=>{const Icon=item.icon;return <Link className={`portal-nav-direct ${active(pathname,item.href)?"is-active":""}`} href={item.href} key={item.href}><Icon size={18} strokeWidth={1.8}/><span><b>{item.label}</b><small>{item.note}</small></span><ChevronRight size={15}/></Link>})}
+      {items.map(item=>{const Icon=item.icon;return <Link className={`portal-nav-direct ${active(pathname,item.href)?"is-active":""}`} href={item.href} aria-label={item.label} aria-current={active(pathname,item.href)?"page":undefined} key={item.href}><Icon size={18} strokeWidth={1.8}/><span><b>{item.label}</b><small>{item.note}</small></span><ChevronRight size={15}/></Link>})}
     </nav>
     <div className="portal-user"><span>{displayName}</span><small>{roleLabel}</small><PortalSignOut/></div>
   </aside>;
