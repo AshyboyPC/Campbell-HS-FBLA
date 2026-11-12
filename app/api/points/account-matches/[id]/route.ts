@@ -32,12 +32,23 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     return conflict("This email is already assigned. Review the existing account before linking it.");
   }
 
-  // A match cannot take over an existing login or change the member's role or approval.
-  const linked = await auth.admin.from("profiles")
-    .update({ auth_user_id: userId, approved_auth_email: email, roster_match_status: "known_member" })
+  const expectedUser = request.data?.metadata?.expected_auth_user_id ?? null;
+  const expectedEmail = request.data?.metadata?.expected_email;
+  if ((expectedUser !== null && typeof expectedUser !== "string")
+      || (expectedEmail != null && typeof expectedEmail !== "string")) {
+    return conflict("This request is invalid.");
+  }
+
+  // Check the roster state the member saw. A later email change requires a fresh request.
+  let update = auth.admin.from("profiles")
+    .update({ auth_user_id: userId, approved_auth_email: email, roster_match_status: "known_member", onboarding_completed: true })
     .eq("id", memberId).eq("active", true).eq("account_role", "member")
-    .in("membership_status", ["active", "pending"]).is("auth_user_id", null)
-    .select("id").maybeSingle();
+    .in("membership_status", ["active", "pending"]);
+  update = expectedUser ? update.eq("auth_user_id", expectedUser) : update.is("auth_user_id", null);
+  if (expectedEmail !== undefined) {
+    update = expectedEmail ? update.eq("approved_auth_email", expectedEmail) : update.is("approved_auth_email", null);
+  }
+  const linked = await update.select("id").maybeSingle();
   if (linked.error || !linked.data) return conflict("This record could not be linked. Check whether either account is already in use.");
 
   const audit = await auth.admin.from("audit_log").insert({
@@ -46,7 +57,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     action: "account_match_linked",
     entity_type: "profile",
     entity_id: memberId,
-    metadata: { request_id: id },
+    metadata: { request_id: id, replaced_login: Boolean(expectedUser) },
   });
   if (audit.error) console.error("Could not record account match review", audit.error.code);
   return NextResponse.json({ ok: true });

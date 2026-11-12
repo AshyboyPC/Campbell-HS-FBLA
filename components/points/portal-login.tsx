@@ -1,98 +1,113 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, LoaderCircle, Mail, ShieldCheck } from "@/components/icons";
-import { gsap } from "gsap";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { ArrowRight, Mail } from "@/components/icons";
+import { PortalStage } from "./portal-motion";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { AuthFrame } from "./auth-frame";
+import styles from "./auth.module.css";
 
-export function PortalLogin({ configured, failedSignIn }: { configured: boolean; failedSignIn: boolean }) {
-  const shellRef = useRef<HTMLDivElement>(null);
-  const [email, setEmail] = useState("");
-  const [state, setState] = useState<"idle" | "loading" | "sent" | "error">(failedSignIn ? "error" : "idle");
-  const [message, setMessage] = useState(failedSignIn ? "That sign-in link could not be verified. Request a new link and open it in this browser." : "");
+function GoogleMark() {
+  return <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+    <path fill="#4285F4" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.1v5h6.7c3.9-3.6 6-8.8 6-14.8Z" />
+    <path fill="#34A853" d="M24 44c5.5 0 10.2-1.8 13.6-4.9l-6.7-5a12.3 12.3 0 0 1-18.2-6.5H5.8v5.2A20 20 0 0 0 24 44Z" />
+    <path fill="#FBBC05" d="M12.7 27.6a12 12 0 0 1 0-7.2v-5.2H5.8a20 20 0 0 0 0 17.6l6.9-5.2Z" />
+    <path fill="#EA4335" d="M24 12c3 0 5.7 1 7.8 3l5.8-5.8A19.2 19.2 0 0 0 24 4 20 20 0 0 0 5.8 15.2l6.9 5.2A12 12 0 0 1 24 12Z" />
+  </svg>;
+}
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const method = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("value");
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setState("error");
-      setMessage("Enter the personal email you used for FBLA Connect.");
-      return;
-    }
+export function PortalLogin({ configured, failedSignIn, signUp, useSavedEmail }: {
+  configured: boolean;
+  failedSignIn: boolean;
+  signUp: boolean;
+  useSavedEmail: boolean;
+}) {
+  const [busy, setBusy] = useState<"email" | "google" | null>(null);
+  const [sentTo, setSentTo] = useState("");
+  const [showEmail, setShowEmail] = useState(useSavedEmail);
+  const firstField = useRef<HTMLInputElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const emailMethod = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (sentTo) heading.current?.focus();
+    else if (showEmail) firstField.current?.focus();
+  }, [showEmail, sentTo]);
+  const [message, setMessage] = useState(failedSignIn ? "That sign-in link expired or couldn’t be verified. Try signing in again." : "");
+
+  async function authenticate(method: "email" | "google", details?: FormData) {
     const supabase = createSupabaseBrowserClient();
-    if (!supabase) return;
-    setState("loading");
+    if (!supabase || busy) return;
+    setBusy(method);
     setMessage("");
-    const redirectTo = `${window.location.origin}/points/auth/callback`;
+    const redirectTo = new URL("/points/auth/callback", window.location.origin);
+    if (signUp) redirectTo.searchParams.set("intent", "signup");
     try {
-      if (method === "email") {
-        const { error } = await supabase.auth.signInWithOtp({
-          email: normalizedEmail,
-          options: { emailRedirectTo: redirectTo },
+      if (method === "google") {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: redirectTo.href, queryParams: { prompt: "select_account" } },
         });
         if (error) throw error;
-        setState("sent");
-        setMessage("Check your inbox for the sign-in link. Open it in this browser to continue.");
         return;
       }
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo, queryParams: { login_hint: normalizedEmail, prompt: "select_account" } },
+      const email = String(details?.get("email") ?? "").trim().toLowerCase();
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: redirectTo.href,
+          shouldCreateUser: signUp,
+          data: signUp ? {
+            given_name: String(details?.get("firstName") ?? "").trim(),
+            family_name: String(details?.get("lastName") ?? "").trim(),
+          } : undefined,
+        },
       });
       if (error) throw error;
+      setSentTo(email);
     } catch {
-      setState("error");
-      setMessage(method === "email" ? "We couldn’t send a sign-in link. Please try again." : "We couldn’t open Google sign-in. Please try again.");
+      setMessage(method === "google" ? "Google sign-in couldn’t start. Please try again."
+        : signUp ? "We couldn’t send a link. Check your email and try again."
+          : "We couldn’t send a sign-in link. Check your email or use Sign up if this is your first time.");
+    } finally {
+      setBusy(null);
     }
   }
 
-  useEffect(() => {
-    if (!shellRef.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const context = gsap.context(() => {
-      gsap.from("[data-auth-reveal]", { y: 22, opacity: 0, duration: .72, stagger: .07, ease: "power3.out" });
-      gsap.fromTo(".portal-auth-route", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1.65, ease: "power2.inOut" });
-      gsap.to(".portal-auth-star", { rotate: 360, transformOrigin: "50% 50%", duration: 18, repeat: -1, ease: "none" });
-      gsap.to(".portal-auth-orbit-dot", { y: -7, duration: 1.7, repeat: -1, yoyo: true, ease: "sine.inOut" });
-    }, shellRef);
-    return () => context.revert();
-  }, []);
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void authenticate("email", new FormData(event.currentTarget));
+  }
 
-  return <div className="portal-auth-shell" ref={shellRef}>
-    <div className="portal-auth-card">
-      <div className="portal-auth-mark" data-auth-reveal><span>CF</span><b>MEMBER PORTAL · 2026—27</b></div>
-      <p className="portal-kicker" data-auth-reveal>YOUR FBLA RECORD</p>
-      <h1 data-auth-reveal>Welcome back.<br/><em>Pick up your progress.</em></h1>
-      <p data-auth-reveal>Use the personal email you registered with in FBLA Connect. Sign in with Google or get a link by email.</p>
-      {!configured ? <div className="portal-setup-note"><strong>Portal connection required</strong><span>Add the Supabase environment variables, apply the migrations, and restart the site.</span></div> : <form onSubmit={submit}>
-        <label htmlFor="portal-email">Personal email used for FBLA Connect</label>
-        <div className="portal-email-field"><Mail size={19}/><input id="portal-email" type="email" autoComplete="email" required value={email} onChange={(e)=>{setEmail(e.target.value); if (state !== "loading") setState("idle");}} placeholder="your.personal@email.com"/></div>
-        {state === "sent" && <p role="status">{message}</p>}
-        {state === "error" && <p className="portal-form-error" role="alert">{message}</p>}
-        <button type="submit" value="google" disabled={state === "loading"}>{state === "loading" ? <LoaderCircle className="portal-spin"/> : <>Continue with Google <ArrowRight size={18}/></>}</button>
-        <button type="submit" value="email" disabled={state === "loading" || state === "sent"}>Email me a sign-in link <Mail size={18}/></button>
-      </form>}
-      <Link className="portal-auth-back" href="/points"><ArrowLeft size={15}/> Back to portal overview</Link>
-    </div>
-    <aside className="portal-auth-guide">
-      <svg className="portal-auth-orbit" viewBox="0 0 620 430" aria-hidden="true">
-        <path className="portal-auth-route portal-auth-route-back" pathLength="1" d="M38 296C116 58 303 31 442 93C574 151 559 329 406 353C269 375 192 267 267 191C332 126 431 171 416 248"/>
-        <path className="portal-auth-route" pathLength="1" d="M38 296C116 58 303 31 442 93C574 151 559 329 406 353C269 375 192 267 267 191C332 126 431 171 416 248"/>
-        <circle className="portal-auth-orbit-dot" cx="38" cy="296" r="17"/>
-        <path className="portal-auth-star" d="M416 218C421 237 427 243 446 248C427 253 421 259 416 278C411 259 405 253 386 248C405 243 411 237 416 218Z"/>
-      </svg>
-      <div className="portal-auth-guide-copy">
-        <ShieldCheck size={28}/>
-        <p className="portal-kicker">PRIVATE BY DESIGN</p>
-        <h2>Your personal email.<br/>Your chapter record.</h2>
-        <div>
-          <p><i>01</i><span><b>Use your real login</b>Enter the personal email you used for FBLA Connect.</span><Check size={16}/></p>
-          <p><i>02</i><span><b>Exact email match</b>Use Google or an email link to verify your address.</span><Check size={16}/></p>
-          <p><i>03</i><span><b>Adviser-approved access</b>Confirm the name on a possible match and an adviser can link your email.</span><Check size={16}/></p>
-        </div>
-        <small>Officers review submitted claims. Advisers manage rules, balances, deductions, and access.</small>
-      </div>
-    </aside>
-  </div>;
+  return <AuthFrame mode={signUp ? "signup" : "signin"}>
+    <PortalStage stage={sentTo ? "inbox" : showEmail ? "email" : "methods"}>
+      <h1 ref={heading} tabIndex={-1}>{sentTo ? "Check your inbox" : signUp ? <>Find your<br />FBLA record</> : "Welcome back"}</h1>
+      <p>{sentTo ? <>We sent a link to <strong>{sentTo}</strong>. Open it in this browser to continue.</>
+        : useSavedEmail ? "Verify the personal email already on your chapter record."
+        : signUp ? "Use the personal email from FBLA Connect to find your points and finish setting up your account."
+        : "Sign in with the personal email you used for FBLA Connect."}</p>
+      {!configured ? <p className={styles.notice} role="status">Member sign-in is temporarily unavailable. Please try again later.</p>
+        : sentTo ? <button type="button" className={styles.textButton} onClick={() => setSentTo("")}>Use a different email</button>
+        : showEmail ? <form className={styles.form} onSubmit={submit}>
+          {signUp && <div className={styles.fields}>
+            <label className={styles.field}>First name<input ref={firstField} name="firstName" autoComplete="given-name" maxLength={100} required /></label>
+            <label className={styles.field}>Last name<input name="lastName" autoComplete="family-name" maxLength={100} required /></label>
+          </div>}
+          <label className={styles.field}>Personal email<input ref={!signUp ? firstField : undefined} name="email" type="email" autoComplete="email" placeholder="you@example.com" required /></label>
+          <button className={`${styles.button} ${styles.primary}`} disabled={Boolean(busy)}>
+            {busy === "email" ? "Sending…" : "Email me a link"} <ArrowRight size={17} />
+          </button>
+          <button type="button" className={styles.textButton} disabled={Boolean(busy)} onClick={() => { setShowEmail(false); setMessage(""); requestAnimationFrame(() => emailMethod.current?.focus()); }}>
+            Back to account options
+          </button>
+        </form> : <div className={styles.methods}>
+          <button type="button" className={styles.button} disabled={Boolean(busy)} onClick={() => authenticate("google")}>
+            <GoogleMark /> <span>{busy === "google" ? "Opening Google…" : "Continue with Google"}</span><ArrowRight size={17} />
+          </button>
+          <button ref={emailMethod} type="button" className={styles.button} disabled={Boolean(busy)} onClick={() => { setShowEmail(true); setMessage(""); }}>
+            <Mail size={18} /><span>Continue with email</span><ArrowRight size={17} />
+          </button>
+        </div>}
+      {message && <p className={styles.error} role="alert">{message}</p>}
+    </PortalStage>
+  </AuthFrame>;
 }

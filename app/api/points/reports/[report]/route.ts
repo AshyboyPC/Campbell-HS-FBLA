@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
+import { readChapterBalances } from "@/lib/points/chapter-balances";
 import { requirePortalRole } from "@/lib/points/api-auth";
 
 const STAFF = ["adviser"];
@@ -37,9 +38,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ report: st
     return download(`campbell-fbla-${report}`, ["Event Date", "Event", "Member ID", "Member", "Status", "Verified", "Service Hours", "Source"], filtered.map((r: any) => [r.events?.start_datetime, r.events?.title, r.profiles?.member_id, r.profiles?.display_name, r.status, r.verified, r.service_hours, r.source_type]));
   }
   if (["leaderboard", "cord-progress"].includes(report)) {
-    const { data } = await auth.admin.from("leaderboard_safe").select("rank,display_name,graduation_year,official_points,required_points,cord_progress").eq("academic_year_id", auth.year.id).not("graduation_year","is",null).order("rank");
-    const rows = (data ?? []).map((r: any) => [r.rank, r.display_name, r.graduation_year, r.official_points, r.required_points, r.cord_progress]);
-    return download(`campbell-fbla-${report}`, ["Rank", "Member", "Graduation Year", "Official Points", "Required Points", "Cord Progress Percent"], rows);
+    const balances = await readChapterBalances(auth.admin, auth.year.id);
+    if (!balances) return NextResponse.json({ error: "Point balances are temporarily unavailable." }, { status: 503 });
+    const rows = balances.map(row => [row.rank, row.display_name, row.graduation_year, row.official_points,
+      row.cord_points, row.required_points, row.cord_progress]);
+    return download(`campbell-fbla-${report}`, ["Rank", "Member", "Graduation Year", `${auth.year.label} Points`,
+      "Points Toward Cord (All Years)", "Required Points", "Cord Progress Percent"], rows);
   }
   if (report === "officer-attendance") {
     const { data } = await auth.admin.from("officer_attendance").select("status,attendance_evidence_status,late_minutes,early_departure_minutes,classified_at,profiles!officer_attendance_officer_id_fkey(member_id,display_name,officer_position),events(title,start_datetime)").eq("academic_year_id", auth.year.id).order("created_at", { ascending: false });

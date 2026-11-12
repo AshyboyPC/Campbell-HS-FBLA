@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-type Request = { id: string; name: string; email: string };
+type Request = { id: string; name: string; email: string; replacesLogin: boolean; replacesEmail: boolean };
 
 export function AccountMatchRequests({ requests }: { requests: Request[] }) {
   const router = useRouter();
@@ -34,9 +34,9 @@ export function AccountMatchRequests({ requests }: { requests: Request[] }) {
     <p>Verify the member’s identity before linking their personal email to the roster.</p>
     {requests.filter(request => !linked.includes(request.id)).map(request => (
       <div className="portal-inline-actions" key={request.id}>
-        <span>{request.name} · {request.email}</span>
+        <span>{request.name} · {request.email}{request.replacesLogin ? " (replaces the current login)" : request.replacesEmail ? " (updates the saved email)" : ""}</span>
         <button type="button" disabled={Boolean(saving)} onClick={() => link(request.id)}>
-          {saving === request.id ? "Linking…" : "Verify and link"}
+          {saving === request.id ? "Linking…" : request.replacesLogin ? "Verify and replace login" : "Verify and link"}
         </button>
       </div>
     ))}

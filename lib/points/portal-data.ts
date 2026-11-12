@@ -3,6 +3,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { hasSupabaseConfig } from "@/lib/supabase/config";
 import { adminUnlockConfigured, isAdminUnlocked } from "@/lib/points/admin-unlock";
+import { pointBalances } from "./cord-progress";
+import { readChapterBalances } from "./chapter-balances";
 import { googleSyncConfigured } from "@/lib/points/google-workspace";
 
 const STAFF = ["adviser"];
@@ -64,9 +66,14 @@ export async function loadPortalContext(slug: string): Promise<PortalContext> {
   }
 
   const data: Record<string, any> = {};
+  const chapterBalances = () => {
+    const admin = createSupabaseAdminClient();
+    return admin ? readChapterBalances(admin, year.id) : Promise.resolve(null);
+  };
   if (slug === "dashboard") {
-    const [{ data: totals }, { data: recent }, { data: attendance }, { data: leaderboard }, { data: requirement }, { data: corrections }, { data: nextEvent }] = await Promise.all([
-      supabase.from("member_point_totals").select("official_points,points_earned,adjustments").eq("member_id", profile.id).eq("academic_year_id", year.id).maybeSingle(),
+    const [balances, { data: recent }, { data: attendance }, { data: leaderboard }, { data: requirement }, { data: corrections }, { data: nextEvent }] = await Promise.all([
+      supabase.from("member_point_totals").select("academic_year_id,academic_year,official_points,points_earned,adjustments")
+        .eq("member_id", profile.id).order("academic_year", { ascending: false }),
       supabase.from("point_transactions").select("id,points,transaction_type,status,description,created_at,point_categories(name,group_name),events(title)").eq("member_id", profile.id).eq("academic_year_id", year.id).order("created_at", { ascending: false }).limit(6),
       supabase.from("member_attendance").select("id,status,verified,service_hours,created_at,events(title,start_datetime,event_type)").eq("member_id", profile.id).order("created_at", { ascending: false }).limit(5),
       supabase.rpc("get_safe_leaderboard", { p_academic_year_id: year.id }),
@@ -74,7 +81,10 @@ export async function loadPortalContext(slug: string): Promise<PortalContext> {
       supabase.from("correction_requests").select("id,status,issue_type,created_at").eq("member_id", profile.id).not("status", "in", "(resolved,rejected)").order("created_at", { ascending: false }).limit(3),
       supabase.from("events").select("id,title,start_datetime,event_type,location,point_categories(name,default_points,points_per_unit,max_points)").eq("academic_year_id", year.id).eq("active", true).gte("start_datetime", new Date().toISOString()).order("start_datetime").limit(1).maybeSingle(),
     ]);
-    data.totals = totals ?? { official_points: 0, points_earned: 0, adjustments: 0 };
+    data.balanceUnavailable = Boolean(balances.error);
+    data.totals = balances.data?.find(row => row.academic_year_id === year.id);
+    data.cordPoints = balances.error ? null : pointBalances(balances.data ?? [], year.id).cumulative;
+    data.pastTotals = (balances.data ?? []).filter(row => row.academic_year_id !== year.id && Number(row.official_points) !== 0);
     data.recent = recent ?? [];
     data.attendance = attendance ?? [];
     data.leaderboard = participatingLeaderboard(leaderboard);
@@ -83,16 +93,16 @@ export async function loadPortalContext(slug: string): Promise<PortalContext> {
     data.corrections = corrections ?? [];
     data.nextEvent = nextEvent;
   } else if (slug === "activity") {
-    const [{ data: transactions }, { data: attendance }, { data: leaderboard }, { data: rules }, { data: requirement }] = await Promise.all([
+    const [{ data: transactions }, { data: attendance }, leaderboard, { data: rules }, { data: requirement }] = await Promise.all([
       supabase.from("point_transactions").select("id,points,transaction_type,status,source_type,description,created_at,point_categories(name,group_name),events(title)").eq("member_id", profile.id).eq("academic_year_id", year.id).order("created_at", { ascending: false }),
       supabase.from("member_attendance").select("id,status,verified,service_hours,source_type,check_in_timestamp,events(title,start_datetime,event_type,required_for_members)").eq("member_id", profile.id).order("check_in_timestamp", { ascending: false }),
-      supabase.rpc("get_safe_leaderboard", { p_academic_year_id: year.id }),
+      chapterBalances(),
       supabase.from("point_categories").select("id,code,name,description,group_name,calculation_type,default_points,points_per_unit,max_points").eq("academic_year_id", year.id).eq("published", true).eq("active", true).order("sort_order"),
       supabase.from("graduation_requirements").select("required_points,notes").eq("academic_year_id", year.id).eq("graduation_year", profile.graduation_year).eq("published", true).maybeSingle(),
     ]);
     data.transactions = transactions ?? [];
     data.attendance = attendance ?? [];
-    data.leaderboard = participatingLeaderboard(leaderboard);
+    data.leaderboard = leaderboard ?? [];
     data.rules = rules ?? [];
     data.requirement = requirement;
   } else if (slug === "requests") {
@@ -113,11 +123,14 @@ export async function loadPortalContext(slug: string): Promise<PortalContext> {
     ]);
     data.attendance=attendance??[]; data.actions=actions??[]; data.requests=requests??[]; data.events=events??[]; data.policyTotal=(policyTx??[]).reduce((sum:number,row:any)=>sum+Number(row.points),0);
   } else if (slug === "leaderboard") {
-    const { data: rows } = await supabase.rpc("get_safe_leaderboard", { p_academic_year_id: year.id }); data.rows = participatingLeaderboard(rows);
+    data.rows = await chapterBalances();
   } else if (slug === "attendance") {
     const { data: rows } = await supabase.from("member_attendance").select("id,status,verified,service_hours,source_type,check_in_timestamp,events(title,start_datetime,event_type,required_for_members)").eq("member_id", profile.id).order("check_in_timestamp", { ascending: false }); data.rows = rows ?? [];
   } else if (slug === "history") {
-    const { data: rows } = await supabase.from("point_transactions").select("id,points,transaction_type,status,source_type,description,created_at,point_categories(name,group_name),events(title)").eq("member_id", profile.id).eq("academic_year_id", year.id).order("created_at", { ascending: false }); data.rows = rows ?? [];
+    const { data: rows } = await supabase.from("point_transactions")
+      .select("id,points,status,source_type,description,created_at,academic_years(label),point_categories(name),events(title,start_datetime)")
+      .eq("member_id", profile.id).order("created_at", { ascending: false });
+    data.rows = rows ?? [];
   } else if (slug === "claims") {
     const [{ data: rows }, { data: categories }, { data: events }] = await Promise.all([
       supabase.from("point_claims").select("id,activity_date,quantity,member_description,evidence_url,status,calculated_points,reviewer_notes,created_at,point_categories(name,calculation_type,default_points,points_per_unit,max_points),events(title)").eq("member_id",profile.id).eq("academic_year_id",year.id).order("created_at",{ascending:false}),
@@ -145,14 +158,14 @@ export async function loadPortalContext(slug: string): Promise<PortalContext> {
     const { data: events } = await supabase.from("events").select("id,title,start_datetime").eq("academic_year_id",year.id).eq("required_for_officers",true).gte("start_datetime",new Date().toISOString()).order("start_datetime").limit(30); data.events=events??[];
   } else if (slug.startsWith("manage/members/")) {
     const memberId=slug.split("/")[2];
-    const [{data:member},{data:totals},{data:attendance},{data:transactions},{data:claims},{data:categories}]=await Promise.all([
+    const [{data:member},balances,{data:attendance},{data:transactions},{data:claims},{data:categories}]=await Promise.all([
       supabase.from("profiles").select("id,member_id,display_name,graduation_year,membership_status,membership_tier,dues_status,account_role,officer_position,approved,active,join_date").eq("id",memberId).maybeSingle(),
-      supabase.from("member_point_totals").select("official_points,points_earned,adjustments").eq("member_id",memberId).eq("academic_year_id",year.id).maybeSingle(),
+      supabase.from("member_point_totals").select("academic_year_id,official_points,points_earned,adjustments").eq("member_id",memberId),
       supabase.from("member_attendance").select("id,status,verified,service_hours,source_type,check_in_timestamp,events(title,start_datetime,event_type)").eq("member_id",memberId).order("check_in_timestamp",{ascending:false}),
       supabase.from("point_transactions").select("id,points,status,source_type,description,created_at,point_categories(name),events(title)").eq("member_id",memberId).eq("academic_year_id",year.id).order("created_at",{ascending:false}),
       supabase.from("point_claims").select("id,status,activity_date,quantity,calculated_points,member_description,point_categories(name)").eq("member_id",memberId).eq("academic_year_id",year.id).order("created_at",{ascending:false}),
       supabase.from("point_categories").select("id,name").eq("academic_year_id",year.id).eq("active",true).order("sort_order"),
-    ]);data.member=member;data.totals=totals;data.attendance=attendance??[];data.transactions=transactions??[];data.claims=claims??[];data.categories=categories??[];
+    ]);data.member=member;data.totals=balances.data?.find(row=>row.academic_year_id===year.id);data.cordPoints=balances.error?null:pointBalances(balances.data??[],year.id).cumulative;data.attendance=attendance??[];data.transactions=transactions??[];data.claims=claims??[];data.categories=categories??[];
   } else if (slug === "manage/members") {
     if (profile.account_role === "adviser") {
       const admin = createSupabaseAdminClient();
@@ -162,12 +175,17 @@ export async function loadPortalContext(slug: string): Promise<PortalContext> {
           .order("created_at", { ascending: false }).limit(200);
         const ids = [...new Set((requests ?? []).map(row => row.entity_id).filter(Boolean))];
         if (ids.length) {
-          const { data: targets } = await admin.from("profiles").select("id,display_name")
-            .in("id", ids).is("auth_user_id", null).eq("account_role", "member").eq("active", true)
+          const { data: targets } = await admin.from("profiles").select("id,display_name,auth_user_id,approved_auth_email")
+            .in("id", ids).eq("account_role", "member").eq("active", true)
             .in("membership_status", ["active", "pending"]);
-          const names = new Map((targets ?? []).map(row => [row.id, row.display_name]));
-          data.accountMatches = (requests ?? []).filter(row => names.has(row.entity_id))
-            .map(row => ({ id: row.id, name: names.get(row.entity_id), email: row.metadata.email }));
+          const records = new Map((targets ?? []).map(row => [row.id, row]));
+          data.accountMatches = (requests ?? []).flatMap(row => {
+            const target = records.get(row.entity_id);
+            if (!target || target.auth_user_id !== (row.metadata.expected_auth_user_id ?? null)) return [];
+            if (row.metadata.expected_email !== undefined && target.approved_auth_email !== row.metadata.expected_email) return [];
+            return [{ id: row.id, name: target.display_name, email: row.metadata.email,
+              replacesLogin: Boolean(target.auth_user_id), replacesEmail: Boolean(target.approved_auth_email) }];
+          });
         }
       }
     }

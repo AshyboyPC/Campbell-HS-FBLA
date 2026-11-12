@@ -9,13 +9,13 @@ import {isPageMotionReady,PAGE_MOTION_READY_EVENT} from "@/lib/page-motion-ready
 
 gsap.registerPlugin(ScrollTrigger);
 
-const smoothScrollPages = new Set(["/", "/about", "/get-involved"]);
+const smoothScrollPages = new Set(["/", "/about", "/get-involved", "/points", "/points/login", "/points/onboarding"]);
 
 export default function SiteSmoothScroll() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!smoothScrollPages.has(pathname)) return;
+    if (!smoothScrollPages.has(pathname) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let lenis: Lenis | null = null;
     let refreshFrame = 0;
     const start = () => {
